@@ -198,11 +198,11 @@ public partial class MainViewModel
         {
             var modules = QrCodeService.GenerateModules("https://fotokoutek.camledian.art/foto/test");
             var result = await _receiptPrinterService.PrintQrSlipAsync(modules, settings).ConfigureAwait(true);
-            DiagTestMessage = result.Success ? "Testovací tisk účtenky odeslán." : "Testovací tisk účtenky selhal: " + result.ErrorMessage;
+            DiagTestMessage = result.Success ? "Testovací tisk QR kódu odeslán." : "Testovací tisk QR kódu selhal: " + result.ErrorMessage;
         }
         catch (Exception ex)
         {
-            DiagTestMessage = "Testovací tisk účtenky selhal: " + ex.Message;
+            DiagTestMessage = "Testovací tisk QR kódu selhal: " + ex.Message;
         }
     }
 

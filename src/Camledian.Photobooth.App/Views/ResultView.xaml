@@ -31,7 +31,7 @@
                 <Image Source="{Binding QrCodeImage}" Margin="8" />
             </Border>
 
-            <Button Content="VYTISKNOUT ÚČTENKU" Style="{StaticResource KioskSecondaryButton}" Margin="0,16,0,0"
+            <Button Content="VYTISKNOUT QR KÓD" Style="{StaticResource KioskSecondaryButton}" Margin="0,16,0,0"
                     Command="{Binding PrintReceiptCommand}"
                     Visibility="{Binding Settings.ReceiptPrinter.Enabled, Converter={StaticResource BoolToVisibilityConverter}}" />
 

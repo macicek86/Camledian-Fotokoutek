@@ -548,7 +548,7 @@ public partial class MainViewModel : ObservableObject
             if (!result.Success)
             {
                 _logger.LogWarning("Receipt slip print failed: {Error}", result.ErrorMessage);
-                await _dispatcher.InvokeAsync(() => { SyncStatusMessage = "Tisk účtenky selhal: " + result.ErrorMessage; })
+                await _dispatcher.InvokeAsync(() => { SyncStatusMessage = "Tisk QR kódu selhal: " + result.ErrorMessage; })
                     .Task.ConfigureAwait(false);
             }
         }
@@ -563,7 +563,7 @@ public partial class MainViewModel : ObservableObject
     {
         if (ResultRecord?.DownloadUrl is not { } downloadUrl)
         {
-            SyncStatusMessage = "Účtenku lze vytisknout až po synchronizaci s cloudem.";
+            SyncStatusMessage = "QR kód lze vytisknout až po synchronizaci s cloudem.";
             return;
         }
 

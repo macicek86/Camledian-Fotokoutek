@@ -91,7 +91,7 @@ This only works on Windows (it launches the actual WPF process). On first run it
   still exercisable without hardware.
 
 Admin screen: **Ctrl+Shift+A**, PIN default `1234` (change it in Admin → Obecné). Tabs: Obecné,
-Kamera, Green Screen, Odečítání pozadí, AI / Hybrid, Logo / Text, Tisk, Účtenka, Cloud, Diagnostika.
+Kamera, Green Screen, Odečítání pozadí, AI / Hybrid, Logo / Text, Tisk, Tisk QR kódu, Cloud, Diagnostika.
 
 **Burst capture with photo selection** (spec §57 "více fotografií"): by default each shoot takes
 **3 shots** with a 1.5s pause (both configurable in Admin → Obecné, set count to 1 for the classic
@@ -118,22 +118,26 @@ full-canvas overlay PNG for simple cases; full-canvas overlays in `assets/overla
 alongside it. A broken logo path or a missing system font just skips that element — it never fails
 the capture.
 
-**Receipt printer (Bluetooth/USB POS, 58mm/80mm thermal)**: Admin → Účtenka — once a guest's photo
-finishes uploading and its QR download link is ready, the app can print that same QR code plus a
-header/footer text (e.g. "Vaše fotografie" / "Naskenujte QR kód mobilem") on a thermal receipt
-printer, so the guest walks away with a paper slip instead of having to scan the on-screen QR before
-leaving. A paired Bluetooth POS printer shows up on Windows as a virtual COM (serial) port — pick it
-from the port dropdown, no vendor SDK or driver needed. The payload is plain ESC/POS: the QR is sent
-as a raster bitmap (`GS v 0`), not the printer's native 2D-barcode command, so it works even on
-printers whose firmware doesn't support QR codes directly; header/footer text is transliterated to
-plain ASCII (`Vaše` → `Vase`) since these printers use codepage 437, which has no Czech diacritics.
-Paper width is a dot count — 384 for 58mm, 576 for 80mm. "Automaticky vytisknout" prints it the
-moment the QR appears on the Result screen; a "VYTISKNOUT ÚČTENKU" button there also allows a manual
-reprint. Like the photo print path, a failed receipt print only shows an error — it never touches the
+**QR code printer (Bluetooth/USB POS, 58mm/80mm thermal)**: Admin → Tisk QR kódu — once a guest's
+photo finishes uploading and its QR download link is ready, the app can print that same QR code plus
+a header/footer text (e.g. "Vaše fotografie" / "Naskenujte QR kód mobilem") on a thermal POS printer,
+so the guest walks away with a paper slip instead of having to scan the on-screen QR before leaving.
+This is a plain QR printout, not a payment receipt — it's **off (opt-in) by default**: the
+"VYTISKNOUT QR KÓD" button on the Result screen always works once the QR is ready, and
+"Automaticky vytisknout" can be turned on if every photo should print one unattended. A paired
+Bluetooth POS printer shows up on Windows as a virtual COM (serial) port — pick it from the port
+dropdown, no vendor SDK or driver needed. The payload is plain ESC/POS: the QR is sent as a raster
+bitmap (`GS v 0`), not the printer's native 2D-barcode command, so it works even on printers whose
+firmware doesn't support QR codes directly; header/footer text is transliterated to plain ASCII
+(`Vaše` → `Vase`) since these printers use codepage 437, which has no Czech diacritics. Paper width is
+a dot count — 384 for 58mm, 576 for 80mm. A failed print only shows an error — it never touches the
 already-saved photo or blocks the next session. `Camledian.Photobooth.Printing` (portable) builds the
 ESC/POS payload as a pure, unit-tested function; the actual serial transport lives in
 `Camledian.Photobooth.Printing.Windows` alongside `WindowsPrintingService`, for the same
-compile-anywhere/run-on-Windows split as the rest of the solution.
+compile-anywhere/run-on-Windows split as the rest of the solution. The underlying
+`ReceiptPrinterSettings`/`IReceiptPrinterService` naming is deliberately kept generic — a later
+paid-photo flow (charge, then print an actual receipt) is expected to build on this same
+payload/transport rather than replace it.
 
 ## Run Cloudflare backend
 

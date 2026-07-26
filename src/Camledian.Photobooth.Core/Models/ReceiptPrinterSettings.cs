@@ -29,6 +29,10 @@ public class ReceiptPrinterSettings
     public string FooterText { get; set; } = "Naskenujte QR kod mobilem";
 
     /// <summary>Print the slip automatically as soon as the photo finishes uploading (the QR is
-    /// only known after upload). Manual printing from the result screen works either way.</summary>
-    public bool AutoPrintReceipt { get; set; } = true;
+    /// only known after upload). Off by default — printing a QR slip is an optional extra for the
+    /// guest, not something every photo should trigger; the "VYTISKNOUT QR KÓD" button on the
+    /// Result screen always works regardless of this flag. (A future paid-photo flow will likely
+    /// want printing tied to payment instead of upload — this is deliberately kept separate from
+    /// that for now.)</summary>
+    public bool AutoPrintReceipt { get; set; }
 }
