@@ -115,10 +115,16 @@ public partial class MainViewModel : ObservableObject
 
     public AppSettings Settings => _settingsService.Current;
 
-    /// <summary>Bundled brand logo (transparent PNG), shown on the Idle screen and the Admin header —
-    /// separate from the user-configurable Branding.LogoPath, which stamps a logo onto the photo
-    /// itself rather than the kiosk UI.</summary>
+    /// <summary>Bundled brand logo (transparent PNG), shown as the Idle screen hero image — separate
+    /// from the user-configurable Branding.LogoPath, which stamps a logo onto the photo itself rather
+    /// than the kiosk UI.</summary>
     public string LogoFullPath { get; } = Path.Combine(AppContext.BaseDirectory, "assets", "branding", "logo-full.png");
+
+    /// <summary>Just the circular emblem, cropped from the same artwork with the wordmark removed —
+    /// at the small size a header watermark needs, the full logo (emblem + "CAMLEDIAN FOTOKOUTEK"
+    /// wordmark stacked on top of each other) shrinks to an illegible blob, so this crop is used
+    /// instead anywhere the logo appears below ~100px tall.</summary>
+    public string LogoEmblemPath { get; } = Path.Combine(AppContext.BaseDirectory, "assets", "branding", "logo-emblem.png");
 
     public IReadOnlyList<CameraDeviceInfo> AvailableCameras { get; private set; } = [];
 
