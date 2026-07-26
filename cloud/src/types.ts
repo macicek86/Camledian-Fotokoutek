@@ -57,6 +57,13 @@ export interface PhotoRow {
   expires_at: string | null;
 }
 
+export interface AdminRow {
+  id: string;
+  username: string;
+  password_hash: string;
+  created_at: string;
+}
+
 export interface PairingCodeRow {
   code: string;
   status: "pending" | "confirmed" | "expired";

@@ -5,9 +5,11 @@
 
 .DESCRIPTION
     Applies local D1 migrations and starts `wrangler dev`. The API is then reachable at
-    http://localhost:8787 — landing page at "/", API under "/api/photobooth/...", the dev pairing
-    UI at "/admin/pair?key=...", and the stats UI at "/admin/stats?key=..." (key = ADMIN_API_KEY
-    from cloud/.dev.vars).
+    http://localhost:8787 — landing page at "/", API under "/api/photobooth/...", and the admin UI
+    (pairing/stats/photo gallery/accounts) at "/admin/login". First run: create an account with
+      curl -X POST "http://localhost:8787/admin/setup?key=$env:ADMIN_API_KEY" `
+        -H "content-type: application/json" -d '{"username":"admin","password":"..."}'
+    (ADMIN_API_KEY comes from cloud/.dev.vars; password needs 8+ chars).
 #>
 $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $PSScriptRoot

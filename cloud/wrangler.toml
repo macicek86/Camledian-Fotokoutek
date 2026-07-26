@@ -43,7 +43,9 @@ GALLERY_BASE_URL = "https://fotokoutek.camledian.art/foto"
 R2_BUCKET_NAME = "camledian-photobooth-assets"
 
 # Secrets (set via `wrangler secret put <NAME>`, never committed):
-#   ADMIN_API_KEY        - shared secret for the dev pairing-confirmation admin UI (spec §36)
+#   ADMIN_API_KEY        - bootstrap/server-to-server key: creates the first /admin account via
+#                          POST /admin/setup, and gates POST /api/photobooth/pair/confirm. Human
+#                          staff log in for real at /admin/login (own accounts, see migrations/0002).
 #   R2_ACCESS_KEY_ID      - R2 S3-compatible API token id, for presigned uploads (spec §34)
 #   R2_SECRET_ACCESS_KEY  - R2 S3-compatible API token secret
 #   R2_ACCOUNT_ID         - Cloudflare account id (for the R2 S3 endpoint URL)

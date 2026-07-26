@@ -1,6 +1,5 @@
-import { StatusError } from "itty-router";
 import type { Env } from "../types";
-import { requireAdminKey } from "../lib/auth";
+import { requireAdminSession } from "../lib/auth";
 
 interface EventStatsRow {
   event_id: string | null;
@@ -11,15 +10,15 @@ interface EventStatsRow {
 }
 
 /**
- * GET /admin/stats?key=... — internal, admin-key-protected overview of photo counts grouped by
- * event (spec §44 "statistiky"). Deliberately separate from the public /foto/:token page, which
- * only ever shows one photo to whoever holds its unguessable token — there is no public listing or
- * grouping of photos by event/location, to protect guests' privacy.
+ * GET /admin/stats — internal, login-protected overview of photo counts grouped by event (spec §44
+ * "statistiky"). Deliberately separate from the public /foto/:token page, which only ever shows one
+ * photo to whoever holds its unguessable token — there is no public listing or grouping of photos
+ * by event/location, to protect guests' privacy.
  */
 export async function adminStatsPage(request: Request, env: Env) {
-  const failure = requireAdminKey(request, env);
-  if (failure) {
-    throw new StatusError(failure.status, { error: failure.error });
+  const session = await requireAdminSession(request, env);
+  if (!session.ok) {
+    return Response.redirect(new URL("/admin/login", request.url).toString(), 303);
   }
 
   const { results: eventStats } = await env.DB
@@ -56,9 +55,6 @@ export async function adminStatsPage(request: Request, env: Env) {
     )
     .first<{ devices: number; events: number; uploadedPhotos: number }>();
 
-  const url = new URL(request.url);
-  const key = url.searchParams.get("key") ?? "";
-
   const eventRows = eventStats
     .map(
       (row) => `
@@ -84,7 +80,8 @@ export async function adminStatsPage(request: Request, env: Env) {
   .totals strong { display: block; font-size: 1.6rem; color: #d4af37; }
 </style></head>
 <body>
-  <p><a href="/admin/pair?key=${encodeURIComponent(key)}">&larr; Párování zařízení</a></p>
+  <p><a href="/admin/pair">&larr; Párování zařízení</a> &middot; <a href="/admin/gallery">Přehled fotografií</a> &middot; <a href="/admin/users">Účty</a>
+  <form style="display:inline; margin-left:12px" method="post" action="/admin/logout"><button type="submit">Odhlásit se</button></form></p>
   <h1>Statistiky fotokoutku</h1>
   <div class="totals">
     <div><strong>${totals?.devices ?? 0}</strong>zařízení</div>

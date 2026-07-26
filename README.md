@@ -153,12 +153,27 @@ Applies local D1 migrations and starts `wrangler dev` on `http://localhost:8787`
 - `/` — landing page (edit pricing/copy in `cloud/src/routes/landing.ts`)
 - `/api/photobooth/*` — the device API (pairing, config, events, photos, heartbeat)
 - `/foto/:token` — the public QR download page (never lists photos by event — see below)
-- `/admin/pair?key=...` / `/admin/stats?key=...` — minimal dev admin UIs, gated by `ADMIN_API_KEY`
-  from `cloud/.dev.vars`
+- `/admin/login` — standalone admin login (own accounts + session cookies, not tied to Camledian's
+  existing shop/POS/invoicing admin — see below). `/admin/pair`, `/admin/stats`, `/admin/gallery`,
+  `/admin/users` all require being logged in here first.
+- First-time setup: create the first account with
+  `curl -X POST "http://localhost:8787/admin/setup?key=$ADMIN_API_KEY" -H 'content-type: application/json'
+  -d '{"username":"...","password":"..."}'` (password ≥ 8 chars), using the `ADMIN_API_KEY` from
+  `cloud/.dev.vars`. Refuses once any admin exists — add more accounts from `/admin/users` after
+  logging in.
 
 **Privacy note:** the public gallery only ever resolves one photo at a time by its own long random
-token — there is no public listing or grouping of photos by event/location. `/admin/stats` is a
-separate, admin-key-protected page for internal counts per event.
+token — there is no public listing or grouping of photos by event/location. `/admin/stats` and
+`/admin/gallery` are separate, login-gated pages (counts per event, and a thumbnail lookup grid
+respectively) for internal staff use only.
+
+**Why not just reuse Camledian's existing admin?** That system covers shop administration,
+invoicing, and POS sales — unrelated to photobooth device pairing. Rather than a half-integration,
+the photobooth backend has its own standalone login (hashed passwords, session cookies in D1,
+gated by `lib/auth.ts#requireAdminSession`). `ADMIN_API_KEY` still exists, scoped down to
+server-to-server/bootstrap use (`/admin/setup`, `POST /api/photobooth/pair/confirm`) — a natural
+seam for a *future* integration (e.g. invoicing or stock-material deduction per printed photo),
+without forcing that decision now.
 
 To deploy for real: `wrangler d1 create camledian-photobooth`, `wrangler r2 bucket create
 camledian-photobooth-assets`, fill in the resulting IDs in `cloud/wrangler.toml`, set the secrets
@@ -236,6 +251,6 @@ possible and let CI do full compilation.
 - **Print button does nothing / errors** — check Admin → Tisk lists a real printer name; a failed
   print never deletes the photo, so retry is always safe from the Result screen.
 - **Cloud sync says "Nespárováno"** — pair the device first: Admin → Cloud → "Spárovat zařízení",
-  then confirm the shown code at `/admin/pair?key=...` on the backend.
+  then confirm the shown code at `/admin/pair` on the backend (after logging in at `/admin/login`).
 - **`wrangler dev` fails to bind D1/R2** — run `npm run db:migrate:local` inside `cloud/` first (also
   done automatically by `scripts/dev-cloud.ps1`).

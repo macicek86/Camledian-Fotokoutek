@@ -106,20 +106,105 @@ describe("gallery (spec §42)", () => {
   });
 });
 
-describe("admin UIs are key-protected", () => {
-  it("blocks /admin/pair without the key", async () => {
-    const res = await SELF.fetch("https://example.com/admin/pair");
+describe("admin bootstrap (spec §56 — standalone admin login)", () => {
+  it("refuses /admin/setup without the bootstrap key", async () => {
+    const res = await SELF.fetch("https://example.com/admin/setup", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ username: "someone", password: "hunter22222" }),
+    });
     expect(res.status).toBe(401);
   });
 
-  it("blocks /admin/stats without the key", async () => {
-    const res = await SELF.fetch("https://example.com/admin/stats");
-    expect(res.status).toBe(401);
+  it("creates the first admin with the bootstrap key, then refuses a second bootstrap", async () => {
+    const first = await SELF.fetch(`https://example.com/admin/setup?key=${ADMIN_KEY}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ username: "boss", password: "correct-horse-battery" }),
+    });
+    expect(first.status).toBe(200);
+
+    const second = await SELF.fetch(`https://example.com/admin/setup?key=${ADMIN_KEY}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ username: "someone-else", password: "another-password" }),
+    });
+    expect(second.status).toBe(409);
+  });
+});
+
+describe("admin UIs require a logged-in session", () => {
+  async function loginCookie(): Promise<string> {
+    // Idempotent: /admin/setup 409s once an admin already exists, which is fine here — we only
+    // care that "boss" exists by the time we try to log in with it.
+    await SELF.fetch(`https://example.com/admin/setup?key=${ADMIN_KEY}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ username: "boss", password: "correct-horse-battery" }),
+    });
+
+    const form = new URLSearchParams({ username: "boss", password: "correct-horse-battery" });
+    const res = await SELF.fetch("https://example.com/admin/login", {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: form.toString(),
+      redirect: "manual",
+    });
+    const setCookie = res.headers.get("set-cookie") ?? "";
+    return setCookie.split(";")[0] ?? "";
+  }
+
+  it("redirects /admin/pair to the login page when not logged in", async () => {
+    const res = await SELF.fetch("https://example.com/admin/pair", { redirect: "manual" });
+    expect(res.status).toBe(303);
+    expect(res.headers.get("location")).toContain("/admin/login");
   });
 
-  it("allows /admin/stats with the correct key", async () => {
-    const res = await SELF.fetch(`https://example.com/admin/stats?key=${ADMIN_KEY}`);
-    expect(res.status).toBe(200);
-    expect(await res.text()).toContain("Statistiky fotokoutku");
+  it("redirects /admin/gallery to the login page when not logged in", async () => {
+    const res = await SELF.fetch("https://example.com/admin/gallery", { redirect: "manual" });
+    expect(res.status).toBe(303);
+    expect(res.headers.get("location")).toContain("/admin/login");
+  });
+
+  it("rejects a login with the wrong password", async () => {
+    const form = new URLSearchParams({ username: "boss", password: "wrong-password" });
+    const res = await SELF.fetch("https://example.com/admin/login", {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: form.toString(),
+      redirect: "manual",
+    });
+    expect(res.status).toBe(303);
+    expect(res.headers.get("location")).toContain("/admin/login?error=1");
+  });
+
+  it("logs in and reaches /admin/stats and /admin/gallery with the session cookie", async () => {
+    const cookie = await loginCookie();
+    expect(cookie).toContain("admin_session=");
+
+    const stats = await SELF.fetch("https://example.com/admin/stats", { headers: { cookie } });
+    expect(stats.status).toBe(200);
+    expect(await stats.text()).toContain("Statistiky fotokoutku");
+
+    const gallery = await SELF.fetch("https://example.com/admin/gallery", { headers: { cookie } });
+    expect(gallery.status).toBe(200);
+    const html = await gallery.text();
+    expect(html).toContain("Přehled fotografií");
+    expect(html).toContain("Zatím žádné nahrané fotografie.");
+  });
+
+  it("logs out and revokes the session", async () => {
+    const cookie = await loginCookie();
+
+    const logoutRes = await SELF.fetch("https://example.com/admin/logout", {
+      method: "POST",
+      headers: { cookie },
+      redirect: "manual",
+    });
+    expect(logoutRes.status).toBe(303);
+
+    const afterLogout = await SELF.fetch("https://example.com/admin/stats", { headers: { cookie }, redirect: "manual" });
+    expect(afterLogout.status).toBe(303);
+    expect(afterLogout.headers.get("location")).toContain("/admin/login");
   });
 });

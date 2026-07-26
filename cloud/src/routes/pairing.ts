@@ -53,20 +53,13 @@ export async function pairStatus(request: IRequest, env: Env) {
   return { status: row.status };
 }
 
-/** POST /api/photobooth/pair/confirm — called by an admin (shared-secret protected dev UI for now,
- * see routes/adminPairUi.ts; a real deployment wires this to Camledian's own admin, spec §56).
- * SECURITY: this mints a real device token, so it must never be reachable without the admin key —
- * without this check anyone could confirm their own pairing code and get a valid device identity. */
-export async function pairConfirm(request: Request, env: Env) {
-  const failure = requireAdminKey(request, env);
-  if (failure) {
-    throw new StatusError(failure.status, { error: failure.error });
-  }
-
-  const body = await request
-    .json<{ code?: string; deviceName?: string }>()
-    .catch(() => ({}) as { code?: string; deviceName?: string });
-  const code = (body.code ?? "").toUpperCase();
+/** Core of pairing confirmation, shared by the admin-key-gated API route below and the
+ * session-gated browser form in routes/adminAuth.ts/adminPairUi.ts — auth is each caller's own
+ * responsibility, this just does the DB work once a caller has already been authorized.
+ * SECURITY: this mints a real device token, so callers must always authorize before invoking it —
+ * without that anyone could confirm their own pairing code and get a valid device identity. */
+export async function confirmPairingCode(env: Env, rawCode: string, deviceName: string | undefined) {
+  const code = rawCode.toUpperCase();
 
   const row = await env.DB
     .prepare("SELECT * FROM photobooth_pairing_codes WHERE code = ?")
@@ -88,7 +81,7 @@ export async function pairConfirm(request: Request, env: Env) {
 
   await env.DB
     .prepare("INSERT INTO photobooth_devices (id, name, token_hash, paired_at) VALUES (?, ?, ?, ?)")
-    .bind(deviceId, body.deviceName ?? null, tokenHash, now)
+    .bind(deviceId, deviceName ?? null, tokenHash, now)
     .run();
 
   await env.DB
@@ -99,4 +92,21 @@ export async function pairConfirm(request: Request, env: Env) {
     .run();
 
   return { deviceId, confirmed: true };
+}
+
+/** POST /api/photobooth/pair/confirm — the server-to-server surface, gated by ADMIN_API_KEY (spec
+ * §56: a future Camledian-side integration could call this directly, without a browser session).
+ * Human staff instead use the /admin/pair browser form, gated by a real login session — see
+ * routes/adminAuth.ts and requireAdminSession. */
+export async function pairConfirm(request: Request, env: Env) {
+  const failure = requireAdminKey(request, env);
+  if (failure) {
+    throw new StatusError(failure.status, { error: failure.error });
+  }
+
+  const body = await request
+    .json<{ code?: string; deviceName?: string }>()
+    .catch(() => ({}) as { code?: string; deviceName?: string });
+
+  return confirmPairingCode(env, body.code ?? "", body.deviceName);
 }

@@ -8,6 +8,8 @@ import { heartbeat } from "./routes/heartbeat";
 import { galleryPage, galleryFile } from "./routes/gallery";
 import { adminPairPage, adminPairConfirmForm } from "./routes/adminPairUi";
 import { adminStatsPage } from "./routes/adminStats";
+import { adminGalleryPage } from "./routes/adminGallery";
+import { loginPage, loginSubmit, logout, setupAdmin, usersPage, createUser } from "./routes/adminAuth";
 import { landingPage } from "./routes/landing";
 
 const { preflight, corsify } = cors();
@@ -59,10 +61,19 @@ router
   .get("/foto/:token", galleryPage)
   .get("/foto/:token/file", galleryFile)
 
+  // Standalone admin login (own accounts + sessions; ADMIN_API_KEY is bootstrap/server-to-server only)
+  .get("/admin/login", loginPage)
+  .post("/admin/login", loginSubmit)
+  .post("/admin/logout", logout)
+  .post("/admin/setup", setupAdmin)
+  .get("/admin/users", usersPage)
+  .post("/admin/users", createUser)
+
   // Minimal dev admin UI (spec §31/§36/§44)
   .get("/admin/pair", adminPairPage)
   .post("/admin/pair/confirm", adminPairConfirmForm)
-  .get("/admin/stats", adminStatsPage);
+  .get("/admin/stats", adminStatsPage)
+  .get("/admin/gallery", adminGalleryPage);
 
 export default {
   fetch: router.fetch,

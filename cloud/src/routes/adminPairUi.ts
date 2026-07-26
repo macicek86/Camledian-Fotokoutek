@@ -1,20 +1,28 @@
-import { StatusError } from "itty-router";
 import type { Env, PairingCodeRow } from "../types";
-import { requireAdminKey } from "../lib/auth";
+import { requireAdminSession } from "../lib/auth";
+import { confirmPairingCode } from "./pairing";
+
+function adminNav(): string {
+  return `<p>
+    <a href="/admin/stats">Statistiky</a> &middot;
+    <a href="/admin/gallery">Přehled fotografií</a> &middot;
+    <a href="/admin/users">Účty</a>
+    <form style="display:inline; margin-left:12px" method="post" action="/admin/logout"><button type="submit">Odhlásit se</button></form>
+  </p>`;
+}
 
 /**
- * GET /admin/pair?key=... — the "minimal development admin UI" spec §31 asks for: lists pending
- * pairing codes and lets a human confirm one. This is deliberately small — a real deployment wires
- * pairing confirmation into Camledian's existing administration instead (spec §56).
+ * GET /admin/pair — lists pending pairing codes and lets a logged-in admin confirm one (spec §31
+ * "minimální development admin UI"). Gated by a real login session (see routes/adminAuth.ts) rather
+ * than a shared key — a real deployment may eventually wire pairing confirmation into Camledian's
+ * existing shop/POS administration instead (spec §56), but that's not happening yet, so this needs
+ * to work as its own standalone system.
  */
 export async function adminPairPage(request: Request, env: Env) {
-  const failure = requireAdminKey(request, env);
-  if (failure) {
-    throw new StatusError(failure.status, { error: failure.error });
+  const session = await requireAdminSession(request, env);
+  if (!session.ok) {
+    return Response.redirect(new URL("/admin/login", request.url).toString(), 303);
   }
-
-  const url = new URL(request.url);
-  const key = url.searchParams.get("key") ?? "";
 
   const { results } = await env.DB
     .prepare("SELECT * FROM photobooth_pairing_codes WHERE status = 'pending' ORDER BY created_at DESC")
@@ -28,7 +36,7 @@ export async function adminPairPage(request: Request, env: Env) {
         <td>${new Date(row.created_at).toLocaleString("cs-CZ")}</td>
         <td>${new Date(row.expires_at).toLocaleString("cs-CZ")}</td>
         <td>
-          <form method="post" action="/admin/pair/confirm?key=${encodeURIComponent(key)}">
+          <form method="post" action="/admin/pair/confirm">
             <input type="hidden" name="code" value="${row.code}">
             <input type="text" name="deviceName" placeholder="Název zařízení" />
             <button type="submit">Potvrdit</button>
@@ -51,7 +59,7 @@ export async function adminPairPage(request: Request, env: Env) {
   button { background: #d4af37; color: #0d1b2e; border: none; border-radius: 6px; cursor: pointer; font-weight: 700; }
 </style></head>
 <body>
-  <p><a href="/admin/stats?key=${encodeURIComponent(key)}">Statistiky &rarr;</a></p>
+  ${adminNav()}
   <h1>Čekající párovací kódy</h1>
   <table>
     <thead><tr><th>Kód</th><th>Vytvořeno</th><th>Vyprší</th><th></th></tr></thead>
@@ -62,26 +70,19 @@ export async function adminPairPage(request: Request, env: Env) {
   return new Response(html, { headers: { "content-type": "text/html; charset=utf-8" } });
 }
 
+/** POST /admin/pair/confirm — browser form counterpart to POST /api/photobooth/pair/confirm; shares
+ * the same confirmPairingCode() core but is gated by the admin's login session instead of the key. */
 export async function adminPairConfirmForm(request: Request, env: Env) {
-  const failure = requireAdminKey(request, env);
-  if (failure) {
-    throw new StatusError(failure.status, { error: failure.error });
+  const session = await requireAdminSession(request, env);
+  if (!session.ok) {
+    return Response.redirect(new URL("/admin/login", request.url).toString(), 303);
   }
 
   const formData = await request.formData();
   const code = String(formData.get("code") ?? "");
   const deviceName = String(formData.get("deviceName") ?? "") || undefined;
 
-  const jsonRequest = new Request(request.url, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ code, deviceName }),
-  });
+  await confirmPairingCode(env, code, deviceName);
 
-  const { pairConfirm } = await import("./pairing");
-  await pairConfirm(jsonRequest, env);
-
-  const url = new URL(request.url);
-  const key = url.searchParams.get("key") ?? "";
-  return Response.redirect(`${url.origin}/admin/pair?key=${encodeURIComponent(key)}`, 303);
+  return Response.redirect(new URL("/admin/pair", request.url).toString(), 303);
 }

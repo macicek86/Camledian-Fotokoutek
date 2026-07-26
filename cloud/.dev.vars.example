@@ -1,7 +1,9 @@
 # Copy this file to .dev.vars for local `wrangler dev` (that file is gitignored — never commit real
 # secrets). In production these are set with `wrangler secret put <NAME>` instead.
 
-# Shared secret for the minimal dev pairing/stats admin UI (spec §31/§36/§44).
+# Bootstrap/server-to-server key: creates the first /admin account (POST /admin/setup) and gates
+# POST /api/photobooth/pair/confirm. Day-to-day admin use goes through /admin/login instead, which
+# has its own accounts + sessions (spec §31/§36/§44/§56).
 ADMIN_API_KEY=change-me-to-a-random-string
 
 # R2 S3-compatible API token, used to create presigned photo-upload URLs (spec §34).
