@@ -48,6 +48,7 @@ public class SettingsRepository(SqliteConnectionFactory connectionFactory)
         Task.WhenAll(
             SaveSectionAsync(nameof(AppSettings.Camera), settings.Camera, cancellationToken),
             SaveSectionAsync(nameof(AppSettings.ChromaKey), settings.ChromaKey, cancellationToken),
+            SaveSectionAsync(nameof(AppSettings.BackgroundSubtraction), settings.BackgroundSubtraction, cancellationToken),
             SaveSectionAsync(nameof(AppSettings.Ai), settings.Ai, cancellationToken),
             SaveSectionAsync(nameof(AppSettings.Print), settings.Print, cancellationToken),
             SaveSectionAsync(nameof(AppSettings.Cloud), settings.Cloud, cancellationToken),
@@ -63,6 +64,9 @@ public class SettingsRepository(SqliteConnectionFactory connectionFactory)
                 break;
             case nameof(AppSettings.ChromaKey):
                 settings.ChromaKey = JsonSerializer.Deserialize<ChromaKeySettings>(json, JsonOptions) ?? settings.ChromaKey;
+                break;
+            case nameof(AppSettings.BackgroundSubtraction):
+                settings.BackgroundSubtraction = JsonSerializer.Deserialize<BackgroundSubtractionSettings>(json, JsonOptions) ?? settings.BackgroundSubtraction;
                 break;
             case nameof(AppSettings.Ai):
                 settings.Ai = JsonSerializer.Deserialize<AiSettings>(json, JsonOptions) ?? settings.Ai;

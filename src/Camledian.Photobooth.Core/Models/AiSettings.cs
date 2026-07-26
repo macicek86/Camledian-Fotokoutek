@@ -2,13 +2,20 @@ namespace Camledian.Photobooth.Core.Models;
 
 public class AiSettings
 {
-    /// <summary>Relative to the app's models/ directory, e.g. "models/u2netp.onnx". Downloaded by
+    /// <summary>Small/fast model used for the live preview loop (spec §24) — needs to keep up with
+    /// the camera, not be maximally accurate. Relative to the app's base directory. Downloaded by
     /// scripts/download-models.ps1, never committed to git.</summary>
-    public string ModelPath { get; set; } = "models/u2netp.onnx";
+    public string PreviewModelPath { get; set; } = "models/u2netp.onnx";
+
+    /// <summary>Larger, more accurate model run once after capture (spec §25) — final quality
+    /// matters more than speed here, since it's a single inference rather than a per-frame one.
+    /// Falls back to <see cref="PreviewModelPath"/> if this file isn't present.</summary>
+    public string FinalModelPath { get; set; } = "models/u2net.onnx";
 
     public bool PreferDirectML { get; set; } = true;
 
-    /// <summary>Square input size the segmentation model expects, e.g. 320 for U2NetP.</summary>
+    /// <summary>Square input size both models expect, e.g. 320 for the U2Net family (same for the
+    /// "p" preview variant and the full final-quality one).</summary>
     public int InputSize { get; set; } = 320;
 
     /// <summary>Target inference rate for the live preview; the last mask is reused between runs

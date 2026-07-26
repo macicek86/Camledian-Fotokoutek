@@ -16,15 +16,19 @@ namespace Camledian.Photobooth.AI;
 /// (CPU, cross-platform) Microsoft.ML.OnnxRuntime package so this actually runs — including in this
 /// Linux devcontainer, given a model file — rather than only compiling. DirectML is attempted
 /// opportunistically on Windows and falls back to CPU if unavailable; see <see cref="TryEnableDirectMl"/>.
+///
+/// Uses two separate models by design: a small/fast one for the live preview loop
+/// (<see cref="AiSettings.PreviewModelPath"/>) and a larger, more accurate one for the one-shot final
+/// render after capture (<see cref="AiSettings.FinalModelPath"/>) — preview needs to keep up with the
+/// camera, final quality doesn't need to be fast since it only runs once per photo.
 /// </summary>
 public class AiBackgroundRemovalProvider : IBackgroundRemovalService, IDisposable
 {
     private readonly Func<AiSettings> _getSettings;
     private readonly ILogger<AiBackgroundRemovalProvider> _logger;
     private readonly Lock _sessionGate = new();
+    private readonly Dictionary<string, InferenceSession> _sessionsByPath = new();
 
-    private InferenceSession? _session;
-    private string? _sessionModelPath;
     private float[]? _lastMask;
     private int _lastMaskWidth;
     private int _lastMaskHeight;
@@ -41,6 +45,10 @@ public class AiBackgroundRemovalProvider : IBackgroundRemovalService, IDisposabl
     /// <summary>Milliseconds the most recent inference call actually took — surfaced on the
     /// Diagnostics screen (spec §23/§44).</summary>
     public double LastInferenceMs { get; private set; }
+
+    /// <summary>Which model actually served the most recent inference — useful on the Diagnostics
+    /// tab to confirm the final render really did use the heavier model, not a silent fallback.</summary>
+    public string? LastModelPathUsed { get; private set; }
 
     public Task<float[]> ApplyAsync(Image<Rgba32> frame, bool highQuality, CancellationToken cancellationToken = default)
     {
@@ -61,8 +69,8 @@ public class AiBackgroundRemovalProvider : IBackgroundRemovalService, IDisposabl
             sw.Stop();
             LastInferenceMs = sw.Elapsed.TotalMilliseconds;
             _logger.LogDebug(
-                "AI inference ({Quality}) took {Ms:0.0} ms for a {W}x{H} frame.",
-                highQuality ? "final" : "preview", LastInferenceMs, frame.Width, frame.Height);
+                "AI inference ({Quality}) took {Ms:0.0} ms for a {W}x{H} frame using '{Model}'.",
+                highQuality ? "final" : "preview", LastInferenceMs, frame.Width, frame.Height, LastModelPathUsed);
 
             _lastMask = mask;
             _lastMaskWidth = frame.Width;
@@ -80,7 +88,7 @@ public class AiBackgroundRemovalProvider : IBackgroundRemovalService, IDisposabl
 
     private float[] RunInference(Image<Rgba32> frame, AiSettings settings, bool highQuality)
     {
-        var session = GetOrCreateSession(settings);
+        var session = GetOrCreateSession(settings, highQuality);
         var inputSize = settings.InputSize;
 
         using var resized = frame.Clone(ctx => ctx.Resize(inputSize, inputSize));
@@ -125,25 +133,34 @@ public class AiBackgroundRemovalProvider : IBackgroundRemovalService, IDisposabl
         });
     }
 
-    private InferenceSession GetOrCreateSession(AiSettings settings)
+    /// <summary>Picks the preview or final model per <paramref name="highQuality"/>, falling back to
+    /// the preview model if the final one isn't present — a missing "nice to have" heavier model
+    /// degrades quality, it must never fail the whole capture (spec §46 in spirit).</summary>
+    private InferenceSession GetOrCreateSession(AiSettings settings, bool highQuality)
     {
-        var modelPath = ResolveModelPath(settings.ModelPath);
+        var previewPath = ResolveModelPath(settings.PreviewModelPath);
+        var finalPath = ResolveModelPath(settings.FinalModelPath);
+
+        var wantedPath = highQuality && File.Exists(finalPath) ? finalPath : previewPath;
+        if (highQuality && wantedPath == previewPath && finalPath != previewPath)
+        {
+            _logger.LogDebug("Final AI model '{FinalPath}' not found; using the preview model instead.", finalPath);
+        }
 
         lock (_sessionGate)
         {
-            if (_session is not null && _sessionModelPath == modelPath)
+            if (_sessionsByPath.TryGetValue(wantedPath, out var existing))
             {
-                return _session;
+                LastModelPathUsed = wantedPath;
+                return existing;
             }
 
-            _session?.Dispose();
-
-            if (!File.Exists(modelPath))
+            if (!File.Exists(wantedPath))
             {
                 throw new FileNotFoundException(
-                    $"AI model not found at '{modelPath}'. Run scripts/download-models.ps1 to fetch it " +
+                    $"AI model not found at '{wantedPath}'. Run scripts/download-models.ps1 to fetch it " +
                     "(models are intentionally not committed to git — spec §22).",
-                    modelPath);
+                    wantedPath);
             }
 
             var options = new SessionOptions();
@@ -153,10 +170,11 @@ public class AiBackgroundRemovalProvider : IBackgroundRemovalService, IDisposabl
             }
 
             var sw = Stopwatch.StartNew();
-            _session = new InferenceSession(modelPath, options);
-            _sessionModelPath = modelPath;
-            _logger.LogInformation("Loaded AI model '{ModelPath}' in {Ms:0} ms.", modelPath, sw.Elapsed.TotalMilliseconds);
-            return _session;
+            var session = new InferenceSession(wantedPath, options);
+            _sessionsByPath[wantedPath] = session;
+            LastModelPathUsed = wantedPath;
+            _logger.LogInformation("Loaded AI model '{ModelPath}' in {Ms:0} ms.", wantedPath, sw.Elapsed.TotalMilliseconds);
+            return session;
         }
     }
 
@@ -190,6 +208,10 @@ public class AiBackgroundRemovalProvider : IBackgroundRemovalService, IDisposabl
         }
     }
 
+    /// <summary>True as soon as the preview model exists — that's the minimum bar for AI/Hybrid mode
+    /// to work at all; the final model is a "nicer if present" upgrade handled by the fallback above.</summary>
+    public bool IsPreviewModelAvailable(AiSettings settings) => File.Exists(ResolveModelPath(settings.PreviewModelPath));
+
     private static string ResolveModelPath(string configuredPath) =>
         Path.IsPathRooted(configuredPath) ? configuredPath : Path.Combine(AppContext.BaseDirectory, configuredPath);
 
@@ -197,8 +219,12 @@ public class AiBackgroundRemovalProvider : IBackgroundRemovalService, IDisposabl
     {
         lock (_sessionGate)
         {
-            _session?.Dispose();
-            _session = null;
+            foreach (var session in _sessionsByPath.Values)
+            {
+                session.Dispose();
+            }
+
+            _sessionsByPath.Clear();
         }
     }
 }

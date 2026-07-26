@@ -46,19 +46,29 @@ public class MockCameraProviderTests
     [Fact]
     public async Task LatestFrameBox_AlwaysServesTheNewestFrameNotABacklog()
     {
+        // The core "latest wins, older frames get disposed" invariant is proven deterministically
+        // (no real timing involved) in Core/LatestFrameBoxTests.cs. This test just checks the
+        // integration with the camera's real background loop, so it deliberately measures relative
+        // progress from a dynamically-observed starting point rather than assuming a fixed frame
+        // number is reached within a fixed delay (that assumption was flaky under CI scheduling load).
         await using var provider = new MockCameraProvider();
         await provider.StartAsync(new CameraStartOptions(null, 160, 90, 60));
+        using var overallCts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
 
-        // Let a handful of frames pile up in the background loop without consuming any.
-        await Task.Delay(300);
+        var first = await provider.PreviewFrames.WaitNextAsync(overallCts.Token);
+        Assert.NotNull(first);
+        var firstFrameNumber = first!.FrameNumber;
+        first.Dispose();
 
-        var frame = await provider.PreviewFrames.WaitNextAsync(new CancellationTokenSource(TimeSpan.FromSeconds(5)).Token);
+        // Let a backlog build up (at 60 FPS, well over one frame) without consuming any of it.
+        await Task.Delay(300, overallCts.Token);
 
-        Assert.NotNull(frame);
-        // The whole point of LatestFrameBox is that only one frame is ever buffered; if a backlog
-        // built up we'd still only get the most recent one here, not frame #1.
-        Assert.True(frame!.FrameNumber > 1, "expected a later frame, not the very first one, proving backlog was dropped");
-        frame.Dispose();
+        var later = await provider.PreviewFrames.WaitNextAsync(overallCts.Token);
+        Assert.NotNull(later);
+        Assert.True(
+            later!.FrameNumber > firstFrameNumber + 1,
+            $"expected to have skipped a backlog of buffered frames (first={firstFrameNumber}, later={later.FrameNumber})");
+        later.Dispose();
 
         await provider.StopAsync();
     }

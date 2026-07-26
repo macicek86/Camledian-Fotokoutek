@@ -110,6 +110,23 @@
                     </StackPanel>
                 </TabItem>
 
+                <TabItem Header="Odečítání pozadí">
+                    <StackPanel Margin="16" MaxWidth="560" HorizontalAlignment="Left">
+                        <TextBlock Text="Vyfoťte prázdnou scénu (bez lidí) přesně tak, jak bude vypadat pozadí během akce. Kamera ani fotokoutek se pak nesmí hýbat."
+                                   Foreground="{StaticResource MutedTextBrush}" TextWrapping="Wrap" Margin="0,0,0,16" />
+                        <Button Content="VYFOTIT PRÁZDNÉ POZADÍ" Style="{StaticResource KioskSecondaryButton}"
+                                Command="{Binding CaptureBackgroundReferenceCommand}" HorizontalAlignment="Left" />
+                        <TextBlock Text="{Binding BackgroundReferenceStatus}" Foreground="{StaticResource AccentBrush}"
+                                   TextWrapping="Wrap" Margin="0,12,0,24" />
+
+                        <Label Content="{Binding Settings.BackgroundSubtraction.ThresholdDistance, StringFormat='Citlivost (práh rozdílu): {0:0}'}" />
+                        <Slider Minimum="5" Maximum="150" Value="{Binding Settings.BackgroundSubtraction.ThresholdDistance}" />
+
+                        <Label Content="{Binding Settings.BackgroundSubtraction.FeatherPixels, StringFormat='Feather (px): {0:0.0}'}" />
+                        <Slider Minimum="0" Maximum="20" Value="{Binding Settings.BackgroundSubtraction.FeatherPixels}" />
+                    </StackPanel>
+                </TabItem>
+
                 <TabItem Header="AI / Hybrid">
                     <StackPanel Margin="16" MaxWidth="480" HorizontalAlignment="Left">
                         <Label Content="Režim odstranění pozadí" />
@@ -117,10 +134,14 @@
                             <ComboBoxItem Content="GreenScreen" />
                             <ComboBoxItem Content="Ai" />
                             <ComboBoxItem Content="Hybrid" />
+                            <ComboBoxItem Content="BackgroundSubtraction" />
+                            <ComboBoxItem Content="BackgroundSubtractionHybrid" />
                             <ComboBoxItem Content="Auto" />
                         </ComboBox>
-                        <Label Content="Cesta k ONNX modelu" />
-                        <TextBox Text="{Binding Settings.Ai.ModelPath}" />
+                        <Label Content="Model pro náhled (rychlý)" />
+                        <TextBox Text="{Binding Settings.Ai.PreviewModelPath}" />
+                        <Label Content="Model pro finální fotografii (přesnější, pomalejší)" />
+                        <TextBox Text="{Binding Settings.Ai.FinalModelPath}" />
                         <CheckBox Content="Preferovat DirectML (GPU) na Windows" IsChecked="{Binding Settings.Ai.PreferDirectML}" />
                         <Label Content="Preview inference FPS" />
                         <TextBox Text="{Binding Settings.Ai.PreviewInferenceFps}" />

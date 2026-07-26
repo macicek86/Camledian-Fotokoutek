@@ -90,7 +90,7 @@ This only works on Windows (it launches the actual WPF process). On first run it
   still exercisable without hardware.
 
 Admin screen: **Ctrl+Shift+A**, PIN default `1234` (change it in Admin → Obecné). Tabs: Obecné,
-Kamera, Green Screen, AI / Hybrid, Tisk, Cloud, Diagnostika.
+Kamera, Green Screen, Odečítání pozadí, AI / Hybrid, Tisk, Cloud, Diagnostika.
 
 ## Run Cloudflare backend
 
@@ -118,17 +118,45 @@ site's domain, to avoid colliding with that domain's own Worker routes.
 
 ## AI models
 
-The AI/Hybrid background-removal modes need a segmentation model that isn't committed to git
-(spec: don't put large model binaries in the repo). Fetch it with:
+The AI/Hybrid background-removal modes need segmentation models that aren't committed to git
+(spec: don't put large model binaries in the repo). Fetch them with:
 
 ```
 ./scripts/download-models.ps1
 ```
 
-This downloads **U-2-Net "p"** (`u2netp.onnx`, ~4.7 MB, Apache-2.0), verifies its SHA-256, and places
-it under `src/Camledian.Photobooth.App/data/models/`. If the AI model is missing, the app doesn't
-crash or spam errors — `BackgroundRemovalServiceFactory` detects that and falls back to Green Screen
-automatically, logging one warning (visible on the Diagnostics tab).
+This downloads **two** models, matching the app's preview-vs-final quality split (spec §24/§25 —
+preview can't wait, final quality can afford to):
+
+- **`u2netp.onnx`** (~4.7 MB) — small/fast, used for the live preview loop. Good enough for a person
+  close to the camera; noticeably weaker than the full model on fine detail (hair strands, motion
+  blur) since it's a distilled/pruned network, not a scaled-down crop of the same model.
+- **`u2net.onnx`** (~176 MB) — the full U-2-Net, used once after capture for the final render. Same
+  320×320 input as the "p" variant (just a deeper network), so no code changes are needed to use it —
+  only the weights differ. Optional: pass `-SkipFinalModel` to the script to skip it and just reuse
+  the small model for everything.
+
+Both are Apache-2.0 (https://github.com/xuebinqin/U-2-Net); if the final model is missing,
+`AiBackgroundRemovalProvider` transparently reuses the preview model instead of failing the capture.
+If even the preview model is missing, `BackgroundRemovalServiceFactory` falls back to Green Screen
+entirely, logging one warning (visible on the Diagnostics tab) instead of crashing.
+
+### Background Subtraction mode
+
+A fourth background-removal mode alongside Green Screen/AI/Hybrid: Admin → "Odečítání pozadí" →
+**"Vyfotit prázdné pozadí"** captures one reference photo of the empty scene, and the app then keys
+out anything in later frames that still closely matches it — no green screen needed at all, since
+the booth and camera don't move during an event. Falls back to Green Screen with a notice until a
+reference photo has been captured. Like any keying technique it struggles if the subject's clothing
+or skin tone closely matches the background color at that spot (the same class of limitation chroma
+key has with green-colored clothing) — the "Citlivost" slider trades that off against tolerating
+lighting drift since the reference was taken.
+
+**BackgroundSubtractionHybrid** mode combines it with AI (`BackgroundSubtractionAiHybridProvider`) —
+the no-green-screen counterpart to Hybrid (Green Screen + AI): background subtraction contributes
+crisp, precise edges, AI covers the case where the subject's color happens to match the reference
+photo at that spot. Requires both a captured reference photo and the AI model; falls back to Green
+Screen if either is missing.
 
 The AI project references the plain (CPU) `Microsoft.ML.OnnxRuntime` package deliberately, since it
 ships native binaries for Windows **and Linux/macOS** in one package — that's what makes AI inference
