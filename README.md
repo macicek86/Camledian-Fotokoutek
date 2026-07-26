@@ -25,8 +25,8 @@ cloud/                            Cloudflare Worker backend (TypeScript, D1, R2)
 assets/
   backgrounds/, overlays/          Bundled demo backgrounds/overlay, also copied next to the built app
 scripts/                          setup / build / test / run / download-models / dev-cloud (PowerShell)
-.github/workflows/ci.yml          .NET CI: Windows build+test (only on src/tests/solution changes)
-.github/workflows/cloud.yml       Cloud CI: Worker typecheck+test (only on cloud/ changes)
+.github/workflows/ci.yml          .NET CI: Windows build+test — manual run, or a v* release tag
+.github/workflows/cloud.yml       Cloud CI: Worker typecheck+test — manual run only
 ```
 
 ## Requirements

@@ -1,16 +1,7 @@
 name: Cloud CI
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "cloud/**"
-      - ".github/workflows/cloud.yml"
-  pull_request:
-    branches: [main]
-    paths:
-      - "cloud/**"
-      - ".github/workflows/cloud.yml"
+  # Typecheck+test is already run locally before every push — this workflow is manual-only now.
   workflow_dispatch:
 
 jobs:

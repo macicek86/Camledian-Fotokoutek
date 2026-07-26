@@ -1,23 +1,11 @@
 name: .NET CI
 
 on:
+  # Build+test is already run locally before every push, so there's no automatic push/PR trigger
+  # here — only a manual run, or a v* release tag (which needs the build+test job as a gate before
+  # publish-app runs).
   push:
-    branches: [main]
     tags: ["v*"]
-    paths:
-      - "src/**"
-      - "tests/**"
-      - "Directory.Build.props"
-      - "Camledian.Photobooth.slnx"
-      - ".github/workflows/ci.yml"
-  pull_request:
-    branches: [main]
-    paths:
-      - "src/**"
-      - "tests/**"
-      - "Directory.Build.props"
-      - "Camledian.Photobooth.slnx"
-      - ".github/workflows/ci.yml"
   workflow_dispatch:
 
 jobs:
