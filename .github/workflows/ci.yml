@@ -3,6 +3,7 @@ name: CI
 on:
   push:
     branches: [main]
+    tags: ["v*"]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -37,6 +38,22 @@ jobs:
         with:
           name: dotnet-test-results
           path: "**/test-results.trx"
+
+  # Builds the downloadable, self-contained CamledianPhotobooth.exe. Deliberately NOT run on every
+  # push/PR (Windows runners bill at a 2x minute multiplier and this step alone re-restores/publishes
+  # ~280MB) — only on a manual "Run workflow" click or when a v* tag is pushed (i.e. an actual release).
+  publish-app:
+    name: Publish Windows app (exe)
+    needs: dotnet
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
 
       # Self-contained, single-file .exe — no separate .NET runtime install needed on the kiosk PC.
       # Native libraries (OpenCvSharp, ONNX Runtime, SQLite) that can't live inside the single file
