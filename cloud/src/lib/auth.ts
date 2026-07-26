@@ -33,7 +33,7 @@ export async function requireDeviceAuth(request: Request, env: Env): Promise<Dev
   const token = match[1]!;
   const tokenHash = await sha256Hex(token);
   const device = await env.DB
-    .prepare("SELECT id FROM photobooth_devices WHERE token_hash = ?")
+    .prepare("SELECT id FROM photobooth_devices WHERE token_hash = ? AND revoked_at IS NULL")
     .bind(tokenHash)
     .first<{ id: string }>();
 
@@ -119,6 +119,12 @@ export async function requireAdminSession(request: Request, env: Env): Promise<A
 /** Looks up the admin account for a username, used by the login form. */
 export async function findAdminByUsername(env: Env, username: string): Promise<AdminRow | null> {
   return env.DB.prepare("SELECT * FROM photobooth_admins WHERE username = ?").bind(username).first<AdminRow>();
+}
+
+/** Looks up the admin account for an id — used by the "my account" password-change form, which
+ * verifies the current password against the logged-in session's own account. */
+export async function findAdminById(env: Env, id: string): Promise<AdminRow | null> {
+  return env.DB.prepare("SELECT * FROM photobooth_admins WHERE id = ?").bind(id).first<AdminRow>();
 }
 
 export function clearAdminSessionCookie(): string {

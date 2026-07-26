@@ -1,5 +1,9 @@
+import type { IRequest } from "itty-router";
+import { filmStripDivider, renderAdminShell, renderPhotoCard } from "../lib/adminLayout";
+import { findAdminById, requireAdminSession } from "../lib/auth";
+import { escapeHtml } from "../lib/html";
+import { expirePhoto } from "../lib/photos";
 import type { Env } from "../types";
-import { requireAdminSession } from "../lib/auth";
 
 interface GalleryRow {
   id: string;
@@ -14,13 +18,22 @@ interface EventOptionRow {
   name: string;
 }
 
-const PAGE_SIZE = 100;
+const PAGE_SIZE = 60;
+
+function buildUrl(base: string, params: Record<string, string>): string {
+  const url = new URL(base, "https://x");
+  for (const [key, value] of Object.entries(params)) {
+    if (value) url.searchParams.set(key, value);
+  }
+  return `${url.pathname}${url.search}`;
+}
 
 /**
- * GET /admin/gallery?event=... — login-protected thumbnail overview of uploaded photos, so staff
- * can look a guest's photo back up (e.g. a lost/expired QR link) without needing the original
- * download token. Distinct from the public /foto/:token page (spec §42), which never lists or
- * groups photos — this view exists purely for internal lookup, gated by the same admin session as
+ * GET /admin/gallery?event=&from=&to=&page= — login-protected thumbnail overview of uploaded
+ * photos, so staff can look a guest's photo back up (e.g. a lost/expired QR link) without needing
+ * the original download token, and can remove a photo on request (e.g. a guest asking to have theirs
+ * taken down). Distinct from the public /foto/:token page (spec §42), which never lists or groups
+ * photos — this view exists purely for internal lookup, gated by the same admin session as
  * /admin/stats (see routes/adminAuth.ts).
  */
 export async function adminGalleryPage(request: Request, env: Env) {
@@ -31,88 +44,119 @@ export async function adminGalleryPage(request: Request, env: Env) {
 
   const url = new URL(request.url);
   const eventFilter = url.searchParams.get("event") ?? "";
+  const fromFilter = url.searchParams.get("from") ?? "";
+  const toFilter = url.searchParams.get("to") ?? "";
+  const page = Math.max(1, Number(url.searchParams.get("page")) || 1);
 
-  const { results: events } = await env.DB
-    .prepare("SELECT id, name FROM photobooth_events ORDER BY created_at DESC")
-    .all<EventOptionRow>();
+  const conditions = ["p.status = 'uploaded'"];
+  const params: unknown[] = [];
+  if (eventFilter) {
+    conditions.push("p.event_id = ?");
+    params.push(eventFilter);
+  }
+  if (fromFilter) {
+    conditions.push("p.uploaded_at >= ?");
+    params.push(`${fromFilter}T00:00:00.000Z`);
+  }
+  if (toFilter) {
+    conditions.push("p.uploaded_at <= ?");
+    params.push(`${toFilter}T23:59:59.999Z`);
+  }
 
-  const photosQuery = eventFilter
-    ? env.DB
-        .prepare(
-          `SELECT p.id, e.name AS event_name, p.download_token, p.uploaded_at, p.expires_at
-           FROM photobooth_photos p
-           LEFT JOIN photobooth_events e ON e.id = p.event_id
-           WHERE p.status = 'uploaded' AND p.event_id = ?
-           ORDER BY p.uploaded_at DESC
-           LIMIT ?`,
-        )
-        .bind(eventFilter, PAGE_SIZE)
-    : env.DB
-        .prepare(
-          `SELECT p.id, e.name AS event_name, p.download_token, p.uploaded_at, p.expires_at
-           FROM photobooth_photos p
-           LEFT JOIN photobooth_events e ON e.id = p.event_id
-           WHERE p.status = 'uploaded'
-           ORDER BY p.uploaded_at DESC
-           LIMIT ?`,
-        )
-        .bind(PAGE_SIZE);
+  const [{ results: events }, { results: rows }, self] = await Promise.all([
+    env.DB.prepare("SELECT id, name FROM photobooth_events ORDER BY created_at DESC").all<EventOptionRow>(),
+    env.DB
+      .prepare(
+        `SELECT p.id, e.name AS event_name, p.download_token, p.uploaded_at, p.expires_at
+         FROM photobooth_photos p
+         LEFT JOIN photobooth_events e ON e.id = p.event_id
+         WHERE ${conditions.join(" AND ")}
+         ORDER BY p.uploaded_at DESC
+         LIMIT ? OFFSET ?`,
+      )
+      .bind(...params, PAGE_SIZE + 1, (page - 1) * PAGE_SIZE)
+      .all<GalleryRow>(),
+    findAdminById(env, session.adminId),
+  ]);
 
-  const { results: photos } = await photosQuery.all<GalleryRow>();
+  const hasNext = rows.length > PAGE_SIZE;
+  const photos = rows.slice(0, PAGE_SIZE);
 
   const eventOptions = events
-    .map(
-      (event) =>
-        `<option value="${event.id}" ${event.id === eventFilter ? "selected" : ""}>${event.name}</option>`,
-    )
+    .map((event) => `<option value="${event.id}" ${event.id === eventFilter ? "selected" : ""}>${escapeHtml(event.name)}</option>`)
     .join("");
 
   const cards = photos
     .map((photo) => {
-      const publicUrl = `/foto/${photo.download_token}`;
-      const thumbUrl = `/foto/${photo.download_token}/file`;
-      const uploaded = new Date(photo.uploaded_at).toLocaleString("cs-CZ");
-      const expired = photo.expires_at && new Date(photo.expires_at).getTime() < Date.now();
-      return `
-      <a class="card" href="${publicUrl}" target="_blank" rel="noopener">
-        <img src="${thumbUrl}" alt="" loading="lazy">
-        <div class="meta">
-          <span>${photo.event_name ?? "(bez akce)"}</span>
-          <span>${uploaded}</span>
-          ${expired ? '<span class="expired">vypršelo</span>' : ""}
-        </div>
-      </a>`;
+      const expired = Boolean(photo.expires_at && new Date(photo.expires_at).getTime() < Date.now());
+      return renderPhotoCard({
+        thumbUrl: `/foto/${photo.download_token}/file`,
+        publicUrl: `/foto/${photo.download_token}`,
+        eventName: photo.event_name ?? "(bez akce)",
+        uploadedLabel: new Date(photo.uploaded_at).toLocaleString("cs-CZ"),
+        expired,
+        deleteUrl: `/admin/gallery/${photo.id}/delete`,
+      });
     })
     .join("");
 
-  const html = `<!doctype html>
-<html lang="cs"><head><meta charset="utf-8"><title>Přehled fotografií</title>
-<link rel="icon" href="/favicon-32.png" sizes="32x32">
-<style>
-  body { font-family: system-ui, sans-serif; background: #0d1b2e; color: #f5f5f5; padding: 32px; }
-  a { color: #d4af37; }
-  select, button { padding: 6px 10px; font-size: 1rem; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; margin-top: 24px; }
-  .card { display: block; background: #16283f; border-radius: 12px; overflow: hidden; text-decoration: none; color: #f5f5f5; }
-  .card img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; background: #0d1b2e; }
-  .meta { padding: 8px 10px; display: flex; flex-direction: column; gap: 2px; font-size: 0.85rem; color: #9fb0c3; }
-  .meta span:first-child { color: #f5f5f5; font-weight: 600; }
-  .expired { color: #e0a458; }
-  .empty { color: #9fb0c3; margin-top: 24px; }
-</style></head>
-<body>
-  <p><a href="/admin/pair">Párování zařízení</a> &middot; <a href="/admin/stats">Statistiky</a> &middot; <a href="/admin/users">Účty</a>
-  <form style="display:inline; margin-left:12px" method="post" action="/admin/logout"><button type="submit">Odhlásit se</button></form></p>
-  <h1>Přehled fotografií</h1>
-  <form method="get">
-    <select name="event" onchange="this.form.submit()">
-      <option value="">Všechny akce</option>
-      ${eventOptions}
-    </select>
-    <noscript><button type="submit">Filtrovat</button></noscript>
-  </form>
-  ${cards ? `<div class="grid">${cards}</div>` : '<p class="empty">Zatím žádné nahrané fotografie.</p>'}
-</body></html>`;
+  const filterState = { event: eventFilter, from: fromFilter, to: toFilter };
+  const pagination = `
+    <div class="pagination">
+      ${page > 1 ? `<a class="btn small secondary" href="${buildUrl("/admin/gallery", { ...filterState, page: String(page - 1) })}">&larr; Novější</a>` : ""}
+      <span style="align-self:center; color:var(--text-muted); font-size:0.85rem">strana ${page}</span>
+      ${hasNext ? `<a class="btn small secondary" href="${buildUrl("/admin/gallery", { ...filterState, page: String(page + 1) })}">Starší &rarr;</a>` : ""}
+    </div>`;
 
-  return new Response(html, { headers: { "content-type": "text/html; charset=utf-8" } });
+  const body = `
+    ${filmStripDivider()}
+    <div class="panel">
+      <form class="filters" method="get">
+        <div>
+          <label for="event">Akce</label>
+          <select id="event" name="event"><option value="">Všechny akce</option>${eventOptions}</select>
+        </div>
+        <div>
+          <label for="from">Od</label>
+          <input type="date" id="from" name="from" value="${escapeHtml(fromFilter)}">
+        </div>
+        <div>
+          <label for="to">Do</label>
+          <input type="date" id="to" name="to" value="${escapeHtml(toFilter)}">
+        </div>
+        <button type="submit">Filtrovat</button>
+      </form>
+    </div>
+    ${
+      cards
+        ? `<div class="photo-grid">${cards}</div>${pagination}`
+        : `<p class="empty">${eventFilter || fromFilter || toFilter ? "Žádné fotografie neodpovídají filtru." : "Zatím žádné nahrané fotografie."}</p>`
+    }`;
+
+  return new Response(renderAdminShell({ title: "Galerie", active: "gallery", adminUsername: self?.username ?? "", body }), {
+    headers: { "content-type": "text/html; charset=utf-8" },
+  });
+}
+
+/** POST /admin/gallery/:id/delete — removes a photo on request (e.g. a guest asking it be taken
+ * down): drops the R2 bytes and marks the row expired via the shared expirePhoto() helper (same
+ * semantics the daily retention cleanup uses), rather than hard-deleting the row. */
+export async function deleteGalleryPhoto(request: IRequest, env: Env) {
+  const session = await requireAdminSession(request, env);
+  if (!session.ok) {
+    return Response.redirect(new URL("/admin/login", request.url).toString(), 303);
+  }
+
+  const photo = await env.DB
+    .prepare("SELECT id, r2_key FROM photobooth_photos WHERE id = ?")
+    .bind(request.params.id)
+    .first<{ id: string; r2_key: string }>();
+
+  if (photo) {
+    await expirePhoto(env, photo);
+  }
+
+  const referer = request.headers.get("referer");
+  const redirectTo = referer && new URL(referer).pathname.startsWith("/admin/") ? referer : new URL("/admin/gallery", request.url).toString();
+  return Response.redirect(redirectTo, 303);
 }

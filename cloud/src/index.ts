@@ -1,15 +1,27 @@
 import { AutoRouter, StatusError, cors, type IRequest } from "itty-router";
 import type { Env } from "./types";
+import { expirePhoto } from "./lib/photos";
 import { pairStart, pairStatus, pairConfirm } from "./routes/pairing";
 import { getConfig } from "./routes/config";
 import { listEvents, getEvent, getEventAssets, getAssetFile } from "./routes/events";
 import { createPhoto, completeUpload } from "./routes/photos";
 import { heartbeat } from "./routes/heartbeat";
 import { galleryPage, galleryFile } from "./routes/gallery";
-import { adminPairPage, adminPairConfirmForm } from "./routes/adminPairUi";
+import { adminDevicesPage, adminPairRedirect, adminPairConfirmForm, renameDevice, revokeDevice } from "./routes/adminDevices";
+import { adminEventsPage, createEvent, updateEvent, toggleEvent } from "./routes/adminEvents";
 import { adminStatsPage } from "./routes/adminStats";
-import { adminGalleryPage } from "./routes/adminGallery";
-import { loginPage, loginSubmit, logout, setupAdmin, usersPage, createUser } from "./routes/adminAuth";
+import { adminGalleryPage, deleteGalleryPhoto } from "./routes/adminGallery";
+import {
+  loginPage,
+  loginSubmit,
+  logout,
+  setupAdmin,
+  usersPage,
+  createUser,
+  changeOwnPassword,
+  resetUserPassword,
+  deleteUser,
+} from "./routes/adminAuth";
 import { landingPage } from "./routes/landing";
 
 const { preflight, corsify } = cors();
@@ -68,12 +80,24 @@ router
   .post("/admin/setup", setupAdmin)
   .get("/admin/users", usersPage)
   .post("/admin/users", createUser)
+  .post("/admin/account/password", changeOwnPassword)
+  .post("/admin/users/:id/reset-password", resetUserPassword)
+  .post("/admin/users/:id/delete", deleteUser)
 
-  // Minimal dev admin UI (spec §31/§36/§44)
-  .get("/admin/pair", adminPairPage)
+  // Admin console (spec §31/§36/§44)
+  .get("/admin", (request: Request) => Response.redirect(new URL("/admin/stats", request.url).toString(), 303))
+  .get("/admin/pair", adminPairRedirect)
   .post("/admin/pair/confirm", adminPairConfirmForm)
   .get("/admin/stats", adminStatsPage)
-  .get("/admin/gallery", adminGalleryPage);
+  .get("/admin/gallery", adminGalleryPage)
+  .post("/admin/gallery/:id/delete", deleteGalleryPhoto)
+  .get("/admin/devices", adminDevicesPage)
+  .post("/admin/devices/:id/rename", renameDevice)
+  .post("/admin/devices/:id/revoke", revokeDevice)
+  .get("/admin/events", adminEventsPage)
+  .post("/admin/events", createEvent)
+  .post("/admin/events/:id", updateEvent)
+  .post("/admin/events/:id/toggle", toggleEvent);
 
 export default {
   fetch: router.fetch,
@@ -93,8 +117,7 @@ async function cleanupExpiredPhotos(env: Env): Promise<void> {
     .all<{ id: string; r2_key: string }>();
 
   for (const photo of results) {
-    await env.ASSETS_BUCKET.delete(photo.r2_key);
-    await env.DB.prepare("UPDATE photobooth_photos SET status = 'expired' WHERE id = ?").bind(photo.id).run();
+    await expirePhoto(env, photo);
   }
 
   if (results.length > 0) {

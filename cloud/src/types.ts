@@ -24,6 +24,7 @@ export interface DeviceRow {
   paired_at: string;
   last_heartbeat_at: string | null;
   last_status: string | null;
+  revoked_at: string | null;
 }
 
 export interface EventRow {
