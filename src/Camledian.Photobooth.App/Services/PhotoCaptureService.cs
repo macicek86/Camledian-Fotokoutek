@@ -2,6 +2,7 @@ using Camledian.Photobooth.Camera;
 using Camledian.Photobooth.Core.Models;
 using Camledian.Photobooth.Core.Utilities;
 using Camledian.Photobooth.Imaging;
+using Camledian.Photobooth.Imaging.Branding;
 using Camledian.Photobooth.Imaging.Composition;
 using Camledian.Photobooth.Storage;
 using Camledian.Photobooth.Storage.Repositories;
@@ -49,6 +50,18 @@ public class PhotoCaptureService(
             await backgroundRemoval.ApplyAsync(still.Image, highQuality: true, cancellationToken).ConfigureAwait(false);
 
             using var finalImage = compositionService.ComposeFinal(background, still.Image, overlay, template);
+
+            try
+            {
+                // Branding (corner logo + text banner) goes on last, over everything — and a broken
+                // logo path or missing font must never cost the guest their photo.
+                BrandingRenderer.Apply(finalImage, settingsService.Current.Branding);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Branding failed for photo {PhotoId}; saving it without branding.", photoId);
+            }
+
             var finalPath = fileStore.GetFinalPath(photoId, now, "jpg");
             await finalImage.SaveAsJpegAsync(finalPath, new JpegEncoder { Quality = 93 }, cancellationToken)
                 .ConfigureAwait(false);

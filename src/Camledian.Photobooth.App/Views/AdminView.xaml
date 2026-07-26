@@ -165,6 +165,42 @@
                     </StackPanel>
                 </TabItem>
 
+                <TabItem Header="Logo / Text">
+                    <StackPanel Margin="16" MaxWidth="560" HorizontalAlignment="Left">
+                        <CheckBox Content="Přidávat logo/text na finální fotografii" IsChecked="{Binding Settings.Branding.Enabled}" />
+                        <TextBlock Text="Aplikuje se jen na výslednou fotku (ne na živý náhled), navíc k případnému celoplošnému overlay."
+                                   Foreground="{StaticResource MutedTextBrush}" TextWrapping="Wrap" Margin="0,0,0,16" />
+
+                        <TextBlock Text="Text (baner)" Style="{StaticResource SectionTitle}" FontSize="18" />
+                        <Label Content="Text — např. název akce a datum (prázdné = bez textu)" />
+                        <TextBox Text="{Binding Settings.Branding.BannerText}" />
+                        <Label Content="Umístění textu" />
+                        <ComboBox SelectedValue="{Binding Settings.Branding.BannerPosition}" SelectedValuePath="Content" Margin="0,0,0,12">
+                            <ComboBoxItem Content="Top" />
+                            <ComboBoxItem Content="Bottom" />
+                        </ComboBox>
+                        <Label Content="{Binding Settings.Branding.FontSizePercent, StringFormat='Velikost písma (% výšky fotky): {0:0.0}'}" />
+                        <Slider Minimum="1" Maximum="12" Value="{Binding Settings.Branding.FontSizePercent}" />
+                        <Label Content="Barva textu (#RRGGBB nebo #RRGGBBAA)" />
+                        <TextBox Text="{Binding Settings.Branding.TextColorHex}" />
+                        <Label Content="Barva pruhu za textem (prázdné = bez pruhu)" />
+                        <TextBox Text="{Binding Settings.Branding.BannerBackgroundHex}" />
+
+                        <TextBlock Text="Logo" Style="{StaticResource SectionTitle}" FontSize="18" />
+                        <Label Content="Cesta k PNG logu (prázdné = bez loga)" />
+                        <TextBox Text="{Binding Settings.Branding.LogoPath}" />
+                        <Label Content="Roh" />
+                        <ComboBox SelectedValue="{Binding Settings.Branding.LogoCorner}" SelectedValuePath="Content" Margin="0,0,0,12">
+                            <ComboBoxItem Content="TopLeft" />
+                            <ComboBoxItem Content="TopRight" />
+                            <ComboBoxItem Content="BottomLeft" />
+                            <ComboBoxItem Content="BottomRight" />
+                        </ComboBox>
+                        <Label Content="{Binding Settings.Branding.LogoWidthPercent, StringFormat='Šířka loga (% šířky fotky): {0:0}'}" />
+                        <Slider Minimum="3" Maximum="40" Value="{Binding Settings.Branding.LogoWidthPercent}" />
+                    </StackPanel>
+                </TabItem>
+
                 <TabItem Header="Tisk">
                     <StackPanel Margin="16" MaxWidth="480" HorizontalAlignment="Left">
                         <Label Content="Tiskárna" />

@@ -9,6 +9,7 @@ public class AppSettings
     public CameraSettings Camera { get; set; } = new();
     public ChromaKeySettings ChromaKey { get; set; } = new();
     public BackgroundSubtractionSettings BackgroundSubtraction { get; set; } = new();
+    public BrandingSettings Branding { get; set; } = new();
     public AiSettings Ai { get; set; } = new();
     public PrintSettings Print { get; set; } = new();
     public CloudSettings Cloud { get; set; } = new();
