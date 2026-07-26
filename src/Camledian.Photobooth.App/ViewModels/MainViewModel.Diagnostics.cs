@@ -115,9 +115,8 @@ public partial class MainViewModel
     [RelayCommand]
     private void TestCamera()
     {
-        AvailableCameras = _camera.ListDevices();
-        OnPropertyChanged(nameof(AvailableCameras));
-        DiagTestMessage = $"Nalezeno {AvailableCameras.Count} zařízení. Aktuální: " +
+        RefreshAvailableCameras();
+        DiagTestMessage = $"Nalezeno {AvailableCameras.Count - 1} zařízení. Aktuální: " +
             (_camera.IsRunning ? $"{_camera.Name} ({_camera.Width}x{_camera.Height}, {_camera.ActualFps:0.0} FPS)" : "neběží") + ".";
     }
 

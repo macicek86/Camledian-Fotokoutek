@@ -3,8 +3,9 @@ import { describe, expect, it } from "vitest";
 import type { Env } from "../src/types";
 
 // `env` is a test-only global from vitest-pool-workers giving direct binding access (see
-// test/apply-migrations.ts) — used below to set up fixtures (a second admin, an uploaded photo)
-// that would otherwise require a full R2 presigned-upload round trip this test env isn't wired for.
+// test/apply-migrations.ts) — used below to set up fixtures (a second admin, an already-"uploaded"
+// photo row) as a shortcut where a test doesn't care about exercising the real upload flow itself
+// (that flow has its own dedicated coverage in the "photo upload" describe block below).
 const testEnv = env as unknown as Env;
 
 // Must match the ADMIN_API_KEY binding configured in vitest.config.ts.
@@ -433,5 +434,90 @@ describe("admin console: gallery photo deletion", () => {
 
     const galleryAfter = await SELF.fetch("https://example.com/admin/gallery", { headers: { cookie } });
     expect(await galleryAfter.text()).not.toContain("fixture-token-1234");
+  });
+});
+
+// Placed last in the file: tests here leave real "uploaded" rows behind (unlike the other
+// describe blocks, which clean up or use isolated fixtures), and this suite shares D1/R2 state
+// sequentially across the whole file rather than isolating it per test — an earlier assertion
+// like "gallery starts out empty" would otherwise see these leftover rows.
+describe("photo upload (spec §34/§39)", () => {
+  /** Pairs a fresh device and returns its Bearer token, for tests that need an authed device. */
+  async function pairDevice(code: string): Promise<string> {
+    await SELF.fetch("https://example.com/api/photobooth/pair/start", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ code }),
+    });
+    await SELF.fetch(`https://example.com/api/photobooth/pair/confirm?key=${ADMIN_KEY}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ code, deviceName: "Upload Test Kiosk" }),
+    });
+
+    const status = await SELF.fetch(`https://example.com/api/photobooth/pair/status/${code}`);
+    const { deviceToken } = await status.json<{ deviceToken: string }>();
+    return deviceToken;
+  }
+
+  it("uploads straight through the Worker's R2 binding and completes without any presigned URL", async () => {
+    const deviceToken = await pairDevice("UPLD-0001");
+
+    const created = await SELF.fetch("https://example.com/api/photobooth/photos", {
+      method: "POST",
+      headers: { authorization: `Bearer ${deviceToken}`, "content-type": "application/json" },
+      body: JSON.stringify({ contentType: "image/jpeg" }),
+    });
+    expect(created.status).toBe(200);
+    const createdBody = await created.json<{ photoId: string; uploadUrl: string; method: string }>();
+    expect(createdBody.method).toBe("PUT");
+    // Relative, Worker-hosted path — not an external R2/S3 URL, so no separate R2 API credentials
+    // are ever needed for this to work (that was the whole point of this route).
+    expect(createdBody.uploadUrl).toBe(`/api/photobooth/photos/${createdBody.photoId}/upload`);
+
+    const bytes = new Uint8Array([1, 2, 3, 4, 5]);
+    const upload = await SELF.fetch(`https://example.com${createdBody.uploadUrl}`, {
+      method: "PUT",
+      headers: { authorization: `Bearer ${deviceToken}`, "content-type": "image/jpeg" },
+      body: bytes,
+    });
+    expect(upload.status).toBe(200);
+
+    const complete = await SELF.fetch(`https://example.com/api/photobooth/photos/${createdBody.photoId}/upload-complete`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${deviceToken}` },
+    });
+    expect(complete.status).toBe(200);
+    const completeBody = await complete.json<{ downloadToken: string; downloadUrl: string }>();
+    expect(completeBody.downloadUrl).toContain(completeBody.downloadToken);
+
+    const row = await testEnv.DB
+      .prepare("SELECT status, r2_key FROM photobooth_photos WHERE id = ?")
+      .bind(createdBody.photoId)
+      .first<{ status: string; r2_key: string }>();
+    expect(row?.status).toBe("uploaded");
+
+    const stored = await testEnv.ASSETS_BUCKET.get(row!.r2_key);
+    expect(stored).not.toBeNull();
+    expect(new Uint8Array(await stored!.arrayBuffer())).toEqual(bytes);
+  });
+
+  it("refuses to upload against another device's photo", async () => {
+    const ownerToken = await pairDevice("UPLD-0002");
+    const otherToken = await pairDevice("UPLD-0003");
+
+    const created = await SELF.fetch("https://example.com/api/photobooth/photos", {
+      method: "POST",
+      headers: { authorization: `Bearer ${ownerToken}`, "content-type": "application/json" },
+      body: JSON.stringify({ contentType: "image/jpeg" }),
+    });
+    const { uploadUrl } = await created.json<{ uploadUrl: string }>();
+
+    const upload = await SELF.fetch(`https://example.com${uploadUrl}`, {
+      method: "PUT",
+      headers: { authorization: `Bearer ${otherToken}`, "content-type": "image/jpeg" },
+      body: new Uint8Array([9]),
+    });
+    expect(upload.status).toBe(404);
   });
 });

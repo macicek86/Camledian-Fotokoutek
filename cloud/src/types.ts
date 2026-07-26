@@ -4,13 +4,9 @@ export interface Env {
 
   DEFAULT_PHOTO_RETENTION_DAYS: string;
   GALLERY_BASE_URL: string;
-  R2_BUCKET_NAME: string;
 
   // Secrets — set via `wrangler secret put`, never committed (see .env.example).
   ADMIN_API_KEY?: string;
-  R2_ACCESS_KEY_ID?: string;
-  R2_SECRET_ACCESS_KEY?: string;
-  R2_ACCOUNT_ID?: string;
 }
 
 export interface AuthedRequest extends Request {

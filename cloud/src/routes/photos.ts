@@ -2,15 +2,17 @@ import { StatusError, type IRequest } from "itty-router";
 import type { Env, PhotoRow } from "../types";
 import { requireDeviceAuth } from "../lib/auth";
 import { createDownloadToken, createId } from "../lib/ids";
-import { createPresignedUploadUrl } from "../lib/r2";
 
 const ALLOWED_CONTENT_TYPES: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/png": "png",
 };
 
-/** POST /api/photobooth/photos — registers an upload and returns a presigned R2 PUT URL (spec §34,
- * §39). The device PUTs the file straight to R2, then calls upload-complete below. */
+/** POST /api/photobooth/photos — registers an upload and returns the Worker-hosted PUT URL below
+ * (spec §34, §39). The device PUTs the file straight through the Worker's R2 binding — no separate
+ * R2 S3 API credentials needed, unlike a presigned-URL approach, at the cost of the file's bytes
+ * passing through the Worker instead of going device-to-R2 directly. Fine for photobooth-sized
+ * single-file uploads; env.ASSETS_BUCKET.put() streams the request body rather than buffering it. */
 export async function createPhoto(request: IRequest, env: Env) {
   const auth = await requireDeviceAuth(request, env);
   if (!auth.ok) {
@@ -40,15 +42,40 @@ export async function createPhoto(request: IRequest, env: Env) {
     .bind(photoId, auth.deviceId, body.eventId ?? null, r2Key, contentType, now.toISOString(), expiresAt)
     .run();
 
-  const uploadUrl = await createPresignedUploadUrl(env, env.R2_BUCKET_NAME, r2Key, contentType);
-
   return {
     photoId,
-    uploadUrl,
+    uploadUrl: `/api/photobooth/photos/${photoId}/upload`,
     method: "PUT",
     requiredHeaders: { "content-type": contentType },
-    expiresInSeconds: 900,
   };
+}
+
+/** PUT /api/photobooth/photos/:id/upload — receives the raw file body and streams it into R2 via
+ * the native binding (spec §34/§39). */
+export async function uploadPhoto(request: IRequest, env: Env) {
+  const auth = await requireDeviceAuth(request, env);
+  if (!auth.ok) {
+    throw new StatusError(auth.status, { error: auth.error });
+  }
+
+  const photo = await env.DB
+    .prepare("SELECT * FROM photobooth_photos WHERE id = ?")
+    .bind(request.params.id)
+    .first<PhotoRow>();
+
+  if (!photo || photo.device_id !== auth.deviceId) {
+    throw new StatusError(404, { error: "Photo not found." });
+  }
+
+  if (!request.body) {
+    throw new StatusError(400, { error: "Request body is empty." });
+  }
+
+  await env.ASSETS_BUCKET.put(photo.r2_key, request.body, {
+    httpMetadata: { contentType: photo.content_type },
+  });
+
+  return { ok: true };
 }
 
 /** POST /api/photobooth/photos/:id/upload-complete — verifies the object landed in R2, then mints

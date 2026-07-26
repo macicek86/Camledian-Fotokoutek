@@ -4,7 +4,7 @@ import { expirePhoto } from "./lib/photos";
 import { pairStart, pairStatus, pairConfirm } from "./routes/pairing";
 import { getConfig } from "./routes/config";
 import { listEvents, getEvent, getEventAssets, getAssetFile } from "./routes/events";
-import { createPhoto, completeUpload } from "./routes/photos";
+import { createPhoto, uploadPhoto, completeUpload } from "./routes/photos";
 import { heartbeat } from "./routes/heartbeat";
 import { galleryPage, galleryFile } from "./routes/gallery";
 import { adminDevicesPage, adminPairRedirect, adminPairConfirmForm, renameDevice, revokeDevice } from "./routes/adminDevices";
@@ -64,6 +64,7 @@ router
 
   // Photo upload (spec §34/§39)
   .post("/api/photobooth/photos", createPhoto)
+  .put("/api/photobooth/photos/:id/upload", uploadPhoto)
   .post("/api/photobooth/photos/:id/upload-complete", completeUpload)
 
   // Heartbeat (spec §32/§44)

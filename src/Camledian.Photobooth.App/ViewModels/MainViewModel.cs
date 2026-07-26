@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Camledian.Photobooth.App.Services;
@@ -60,6 +61,14 @@ public partial class MainViewModel : ObservableObject
 
     [ObservableProperty]
     private BitmapSource? _previewImage;
+
+    /// <summary>Mirrors <see cref="BackgroundRemovalServiceFactory.LastFallbackNotice"/> onto the
+    /// live screen the operator is actually looking at during a shoot — previously this only showed
+    /// up in Admin > Diagnostika, so a silent fallback to Green Screen (missing AI model, no
+    /// background-subtraction reference photo) looked identical to "the background removal is just
+    /// broken" with zero indication of why.</summary>
+    [ObservableProperty]
+    private string? _backgroundRemovalNotice;
 
     [ObservableProperty]
     private int _countdownValue;
@@ -126,7 +135,18 @@ public partial class MainViewModel : ObservableObject
     /// instead anywhere the logo appears below ~100px tall.</summary>
     public string LogoEmblemPath { get; } = Path.Combine(AppContext.BaseDirectory, "assets", "branding", "logo-emblem.png");
 
-    public IReadOnlyList<CameraDeviceInfo> AvailableCameras { get; private set; } = [];
+    /// <summary>Sentinel entry so the Admin > Kamera picker can offer "pick automatically" alongside
+    /// real devices, instead of requiring an admin to manually type/clear a device id to get that
+    /// behavior (empty/whitespace id already means "auto" — see WebcamCameraProvider.ResolveDeviceIndex).</summary>
+    private static readonly CameraDeviceInfo AutoCameraDevice = new(string.Empty, "(Automaticky)", -1);
+
+    public IReadOnlyList<CameraDeviceInfo> AvailableCameras { get; private set; } = [AutoCameraDevice];
+
+    private void RefreshAvailableCameras()
+    {
+        AvailableCameras = new[] { AutoCameraDevice }.Concat(_camera.ListDevices()).ToList();
+        OnPropertyChanged(nameof(AvailableCameras));
+    }
 
     public IReadOnlyList<PrinterInfo> AvailablePrinters { get; private set; } = [];
 
@@ -176,13 +196,18 @@ public partial class MainViewModel : ObservableObject
         _logger = logger;
 
         _fsm.StateChanged += (_, e) => State = e.To;
-        _preview.FrameReady += (_, bitmap) => PreviewImage = bitmap;
+        _preview.FrameReady += (_, bitmap) =>
+        {
+            PreviewImage = bitmap;
+            BackgroundRemovalNotice = _backgroundRemovalFactory.LastFallbackNotice;
+        };
     }
 
     public async Task InitializeAsync()
     {
         await _settingsService.LoadAsync().ConfigureAwait(true);
         IsKioskMode = _settingsService.Current.Ui.KioskMode;
+        BackgroundReferenceImagePath = _settingsService.Current.BackgroundSubtraction.ReferenceImagePath;
 
         await _assetCatalog.InitializeAsync().ConfigureAwait(true);
         Backgrounds.Clear();
@@ -201,7 +226,7 @@ public partial class MainViewModel : ObservableObject
             ?? OutputTemplate.DigitalLandscape;
         _preview.Template = template;
 
-        AvailableCameras = _camera.ListDevices();
+        RefreshAvailableCameras();
         AvailablePrinters = _printingService.ListPrinters();
         AvailableReceiptPorts = _receiptPrinterService.ListPorts();
 
@@ -229,16 +254,21 @@ public partial class MainViewModel : ObservableObject
     }
 
     /// <summary>Starts the background sync worker and refreshes the asset manifest if this device
-    /// is already paired (spec §35/§37/§38). A no-op until an admin completes pairing.</summary>
+    /// is already paired (spec §35/§37/§38).</summary>
     private async Task StartCloudIfConfiguredAsync()
     {
+        // Always start the worker — its own loop already re-reads Enabled/DeviceToken every cycle
+        // and idles harmlessly until both are set (see CloudSyncWorker.RunLoopAsync). Gating the
+        // Start() call itself on those same conditions meant an admin who enabled Cloud sync *after*
+        // app launch (with a device paired earlier) never got the worker running until a restart —
+        // photos just piled up in the queue with the Result screen stuck on "synchronizuje...".
+        _cloudSyncWorker.Start();
+
         var cloud = _settingsService.Current.Cloud;
         if (!cloud.Enabled || string.IsNullOrWhiteSpace(cloud.DeviceToken))
         {
             return;
         }
-
-        _cloudSyncWorker.Start();
 
         try
         {
@@ -521,6 +551,22 @@ public partial class MainViewModel : ObservableObject
                 {
                     await Task.Delay(TimeSpan.FromSeconds(3), cts.Token).ConfigureAwait(false);
                     var photo = await _photoRepository.GetByIdAsync(photoId, cts.Token).ConfigureAwait(false);
+
+                    // Otherwise a permanently-failed upload (network down, bad auth, wrong API URL,
+                    // ...) left "Fotografie se synchronizuje..." on screen forever with no
+                    // indication anything went wrong — this is what the operator actually needs to
+                    // see so they know a re-sync (or a "Sync now" in Diagnostika) is needed.
+                    var queueItem = await _syncQueueRepository.GetByPhotoIdAsync(photoId, cts.Token).ConfigureAwait(false);
+                    if (queueItem is { Status: SyncStatus.Failed, NextAttemptAtUtc: var next } && next == DateTimeOffset.MaxValue)
+                    {
+                        await _dispatcher.InvokeAsync(() =>
+                        {
+                            SyncStatusMessage = "Synchronizace s cloudem selhala: " + (queueItem.LastError ?? "neznámá chyba") +
+                                " Zkuste to znovu v Admin > Diagnostika > Sync now.";
+                        });
+                        return;
+                    }
+
                     if (photo is { Synced: true, DownloadUrl: not null })
                     {
                         var qrBytes = QrCodeService.GeneratePng(photo.DownloadUrl);

@@ -21,8 +21,7 @@ public sealed record CreatePhotoResponse(
     string PhotoId,
     string UploadUrl,
     string Method,
-    Dictionary<string, string> RequiredHeaders,
-    int ExpiresInSeconds);
+    Dictionary<string, string> RequiredHeaders);
 
 public sealed record CompleteUploadResponse(string PhotoId, string DownloadToken, string DownloadUrl);
 

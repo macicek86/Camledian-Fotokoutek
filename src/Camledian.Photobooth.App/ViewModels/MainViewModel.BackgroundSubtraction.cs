@@ -18,6 +18,12 @@ public partial class MainViewModel
     [ObservableProperty]
     private string _backgroundReferenceStatus = "Zatím nevyfoceno.";
 
+    /// <summary>Path to the last-captured reference photo, so the Admin UI can show a thumbnail of
+    /// what was actually captured instead of just a status line — an admin can't tell from a
+    /// timestamp alone whether the shot was framed/lit correctly.</summary>
+    [ObservableProperty]
+    private string? _backgroundReferenceImagePath;
+
     [RelayCommand]
     private async Task CaptureBackgroundReferenceAsync()
     {
@@ -52,6 +58,7 @@ public partial class MainViewModel
             }
 
             BackgroundReferenceStatus = $"Vyfoceno {DateTimeOffset.Now:HH:mm:ss}. Přepněte režim na \"BackgroundSubtraction\".";
+            BackgroundReferenceImagePath = newPath;
             _logger.LogInformation("Captured background-subtraction reference photo at {Path}.", newPath);
         }
         catch (Exception ex)

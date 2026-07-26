@@ -5,22 +5,11 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d" d:DesignWidth="1280" d:DesignHeight="720">
     <UserControl.Resources>
+        <!-- TextBox/CheckBox/Slider/ComboBox/TabControl are styled globally in App.xaml so the
+             dark ControlTemplate applies everywhere in Admin; only Label/SectionTitle are local. -->
         <Style TargetType="Label">
             <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
             <Setter Property="FontSize" Value="16" />
-        </Style>
-        <Style TargetType="TextBox">
-            <Setter Property="FontSize" Value="16" />
-            <Setter Property="Margin" Value="0,0,0,12" />
-            <Setter Property="Padding" Value="6" />
-        </Style>
-        <Style TargetType="CheckBox">
-            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
-            <Setter Property="FontSize" Value="16" />
-            <Setter Property="Margin" Value="0,0,0,12" />
-        </Style>
-        <Style TargetType="Slider">
-            <Setter Property="Margin" Value="0,0,0,4" />
         </Style>
         <Style x:Key="SectionTitle" TargetType="TextBlock">
             <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
@@ -60,267 +49,298 @@
 
             <TabControl Grid.Row="1" Background="Transparent">
                 <TabItem Header="Obecné">
-                    <StackPanel Margin="16" MaxWidth="480" HorizontalAlignment="Left">
-                        <CheckBox Content="Kiosk mode (fullscreen)" IsChecked="{Binding Settings.Ui.KioskMode}" />
-                        <Label Content="Odpočet (sekundy)" />
-                        <TextBox Text="{Binding Settings.Ui.CountdownSeconds}" />
-                        <Label Content="Timeout výsledkové obrazovky (sekundy)" />
-                        <TextBox Text="{Binding Settings.Ui.ResultScreenTimeoutSeconds}" />
-                        <Label Content="Admin PIN" />
-                        <TextBox Text="{Binding Settings.Ui.AdminPin}" />
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Margin="16" MaxWidth="480" HorizontalAlignment="Left">
+                            <CheckBox Content="Kiosk mode (fullscreen)" IsChecked="{Binding Settings.Ui.KioskMode}" />
+                            <Label Content="Odpočet (sekundy)" />
+                            <TextBox Text="{Binding Settings.Ui.CountdownSeconds}" />
+                            <Label Content="Timeout výsledkové obrazovky (sekundy)" />
+                            <TextBox Text="{Binding Settings.Ui.ResultScreenTimeoutSeconds}" />
+                            <Label Content="Admin PIN" />
+                            <TextBox Text="{Binding Settings.Ui.AdminPin}" />
 
-                        <TextBlock Text="Série snímků" Style="{StaticResource SectionTitle}" FontSize="18" />
-                        <Label Content="{Binding Settings.Ui.BurstCount, StringFormat='Počet snímků za sebou (1 = bez výběru): {0}'}" />
-                        <Slider Minimum="1" Maximum="6" TickFrequency="1" IsSnapToTickEnabled="True" Value="{Binding Settings.Ui.BurstCount}" />
-                        <Label Content="{Binding Settings.Ui.BurstIntervalMs, StringFormat='Pauza mezi snímky (ms): {0}'}" />
-                        <Slider Minimum="500" Maximum="5000" TickFrequency="100" IsSnapToTickEnabled="True" Value="{Binding Settings.Ui.BurstIntervalMs}" />
-                        <Label Content="Text výzvy při focení" />
-                        <TextBox Text="{Binding Settings.Ui.SmilePromptText}" />
+                            <TextBlock Text="Série snímků" Style="{StaticResource SectionTitle}" FontSize="18" />
+                            <Label Content="{Binding Settings.Ui.BurstCount, StringFormat='Počet snímků za sebou (1 = bez výběru): {0}'}" />
+                            <Slider Minimum="1" Maximum="6" TickFrequency="1" IsSnapToTickEnabled="True" Value="{Binding Settings.Ui.BurstCount}" />
+                            <Label Content="{Binding Settings.Ui.BurstIntervalMs, StringFormat='Pauza mezi snímky (ms): {0}'}" />
+                            <Slider Minimum="500" Maximum="5000" TickFrequency="100" IsSnapToTickEnabled="True" Value="{Binding Settings.Ui.BurstIntervalMs}" />
+                            <Label Content="Text výzvy při focení" />
+                            <TextBox Text="{Binding Settings.Ui.SmilePromptText}" />
 
-                        <TextBlock Text="Fyzická spoušť" Style="{StaticResource SectionTitle}" FontSize="18" />
-                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource MutedTextBrush}" Margin="0,0,0,12">
-                            Většina bezdrátových/USB spouští (Bluetooth tlačítko, nožní spínač, prezentační klikátko)
-                            se chová jako klávesnice — stačí zmáčknout tlačítko na spoušti a systém si zapamatuje,
-                            jakou klávesu posílá.
-                        </TextBlock>
-                        <TextBlock Text="{Binding Settings.Ui.PhotoTriggerKey, StringFormat='Aktuální klávesa: {0}', FallbackValue='Aktuální klávesa: (vypnuto)'}"
-                                   Foreground="{StaticResource TextBrush}" Margin="0,0,0,8" />
-                        <TextBlock Text="Stiskněte tlačítko na spoušti (nebo klávesu)..." Foreground="{StaticResource AccentBrush}" FontWeight="Bold"
-                                   Margin="0,0,0,8" Visibility="{Binding IsLearningTriggerKey, Converter={StaticResource BoolToVisibilityConverter}}" />
-                        <StackPanel Orientation="Horizontal">
-                            <Button Content="NAUČIT SE TLAČÍTKO" Style="{StaticResource KioskSecondaryButton}" FontSize="16"
-                                    Command="{Binding BeginLearnTriggerKeyCommand}" Margin="0,0,8,0" />
-                            <Button Content="Vypnout spoušť" Style="{StaticResource KioskSecondaryButton}" FontSize="16"
-                                    Command="{Binding ClearTriggerKeyCommand}" />
+                            <TextBlock Text="Fyzická spoušť" Style="{StaticResource SectionTitle}" FontSize="18" />
+                            <TextBlock TextWrapping="Wrap" Foreground="{StaticResource MutedTextBrush}" Margin="0,0,0,12">
+                                Většina bezdrátových/USB spouští (Bluetooth tlačítko, nožní spínač, prezentační klikátko)
+                                se chová jako klávesnice — stačí zmáčknout tlačítko na spoušti a systém si zapamatuje,
+                                jakou klávesu posílá.
+                            </TextBlock>
+                            <TextBlock Text="{Binding Settings.Ui.PhotoTriggerKey, StringFormat='Aktuální klávesa: {0}', FallbackValue='Aktuální klávesa: (vypnuto)'}"
+                                       Foreground="{StaticResource TextBrush}" Margin="0,0,0,8" />
+                            <TextBlock Text="Stiskněte tlačítko na spoušti (nebo klávesu)..." Foreground="{StaticResource AccentBrush}" FontWeight="Bold"
+                                       Margin="0,0,0,8" Visibility="{Binding IsLearningTriggerKey, Converter={StaticResource BoolToVisibilityConverter}}" />
+                            <StackPanel Orientation="Horizontal">
+                                <Button Content="NAUČIT SE TLAČÍTKO" Style="{StaticResource KioskSecondaryButton}" FontSize="16"
+                                        Command="{Binding BeginLearnTriggerKeyCommand}" Margin="0,0,8,0" />
+                                <Button Content="Vypnout spoušť" Style="{StaticResource KioskSecondaryButton}" FontSize="16"
+                                        Command="{Binding ClearTriggerKeyCommand}" />
+                            </StackPanel>
                         </StackPanel>
-                    </StackPanel>
+                    </ScrollViewer>
                 </TabItem>
 
                 <TabItem Header="Kamera">
-                    <StackPanel Margin="16" MaxWidth="480" HorizontalAlignment="Left">
-                        <TextBlock Text="{Binding AvailableCameras.Count, StringFormat='Nalezeno zařízení: {0}'}"
-                                   Foreground="{StaticResource MutedTextBrush}" Margin="0,0,0,12" />
-                        <Label Content="ID zařízení (prázdné = automaticky)" />
-                        <TextBox Text="{Binding Settings.Camera.SelectedDeviceId}" />
-                        <Label Content="Šířka" />
-                        <TextBox Text="{Binding Settings.Camera.RequestedWidth}" />
-                        <Label Content="Výška" />
-                        <TextBox Text="{Binding Settings.Camera.RequestedHeight}" />
-                        <Label Content="FPS" />
-                        <TextBox Text="{Binding Settings.Camera.RequestedFps}" />
-                        <CheckBox Content="Použít Mock kameru, pokud není fyzická k dispozici" IsChecked="{Binding Settings.Camera.UseMockIfUnavailable}" />
-                    </StackPanel>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Margin="16" MaxWidth="480" HorizontalAlignment="Left">
+                            <Label Content="Zařízení" />
+                            <ComboBox ItemsSource="{Binding AvailableCameras}" DisplayMemberPath="Name"
+                                      SelectedValue="{Binding Settings.Camera.SelectedDeviceId}" SelectedValuePath="Id" Margin="0,0,0,4" />
+                            <Button Content="Aktualizovat seznam zařízení" Style="{StaticResource KioskSecondaryButton}" FontSize="14"
+                                    Command="{Binding TestCameraCommand}" HorizontalAlignment="Left" Margin="0,0,0,16" />
+                            <Label Content="Šířka" />
+                            <TextBox Text="{Binding Settings.Camera.RequestedWidth}" />
+                            <Label Content="Výška" />
+                            <TextBox Text="{Binding Settings.Camera.RequestedHeight}" />
+                            <Label Content="FPS" />
+                            <TextBox Text="{Binding Settings.Camera.RequestedFps}" />
+                            <CheckBox Content="Použít Mock kameru, pokud není fyzická k dispozici" IsChecked="{Binding Settings.Camera.UseMockIfUnavailable}" />
+                        </StackPanel>
+                    </ScrollViewer>
                 </TabItem>
 
                 <TabItem Header="Green Screen">
-                    <StackPanel Margin="16" MaxWidth="560" HorizontalAlignment="Left">
-                        <Label Content="{Binding Settings.ChromaKey.TargetHueDegrees, StringFormat='Cílová barva (odstín, °): {0:0}'}" />
-                        <Slider Minimum="0" Maximum="360" Value="{Binding Settings.ChromaKey.TargetHueDegrees}" />
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Margin="16" MaxWidth="560" HorizontalAlignment="Left">
+                            <Label Content="{Binding Settings.ChromaKey.TargetHueDegrees, StringFormat='Cílová barva (odstín, °): {0:0}'}" />
+                            <Slider Minimum="0" Maximum="360" Value="{Binding Settings.ChromaKey.TargetHueDegrees}" />
 
-                        <Label Content="{Binding Settings.ChromaKey.HueToleranceDegrees, StringFormat='Tolerance odstínu (°): {0:0}'}" />
-                        <Slider Minimum="1" Maximum="90" Value="{Binding Settings.ChromaKey.HueToleranceDegrees}" />
+                            <Label Content="{Binding Settings.ChromaKey.HueToleranceDegrees, StringFormat='Tolerance odstínu (°): {0:0}'}" />
+                            <Slider Minimum="1" Maximum="90" Value="{Binding Settings.ChromaKey.HueToleranceDegrees}" />
 
-                        <Label Content="{Binding Settings.ChromaKey.SaturationThreshold, StringFormat='Práh saturace: {0:0.00}'}" />
-                        <Slider Minimum="0" Maximum="1" Value="{Binding Settings.ChromaKey.SaturationThreshold}" />
+                            <Label Content="{Binding Settings.ChromaKey.SaturationThreshold, StringFormat='Práh saturace: {0:0.00}'}" />
+                            <Slider Minimum="0" Maximum="1" Value="{Binding Settings.ChromaKey.SaturationThreshold}" />
 
-                        <Label Content="{Binding Settings.ChromaKey.ValueThreshold, StringFormat='Práh jasu: {0:0.00}'}" />
-                        <Slider Minimum="0" Maximum="1" Value="{Binding Settings.ChromaKey.ValueThreshold}" />
+                            <Label Content="{Binding Settings.ChromaKey.ValueThreshold, StringFormat='Práh jasu: {0:0.00}'}" />
+                            <Slider Minimum="0" Maximum="1" Value="{Binding Settings.ChromaKey.ValueThreshold}" />
 
-                        <Label Content="{Binding Settings.ChromaKey.FeatherPixels, StringFormat='Feather (px): {0:0.0}'}" />
-                        <Slider Minimum="0" Maximum="20" Value="{Binding Settings.ChromaKey.FeatherPixels}" />
+                            <Label Content="{Binding Settings.ChromaKey.FeatherPixels, StringFormat='Feather (px): {0:0.0}'}" />
+                            <Slider Minimum="0" Maximum="20" Value="{Binding Settings.ChromaKey.FeatherPixels}" />
 
-                        <Label Content="{Binding Settings.ChromaKey.EdgeSmoothingPixels, StringFormat='Vyhlazení hran (px): {0:0.0}'}" />
-                        <Slider Minimum="0" Maximum="20" Value="{Binding Settings.ChromaKey.EdgeSmoothingPixels}" />
+                            <Label Content="{Binding Settings.ChromaKey.EdgeSmoothingPixels, StringFormat='Vyhlazení hran (px): {0:0.0}'}" />
+                            <Slider Minimum="0" Maximum="20" Value="{Binding Settings.ChromaKey.EdgeSmoothingPixels}" />
 
-                        <Label Content="{Binding Settings.ChromaKey.SpillSuppressionStrength, StringFormat='Potlačení spill: {0:0.00}'}" />
-                        <Slider Minimum="0" Maximum="1" Value="{Binding Settings.ChromaKey.SpillSuppressionStrength}" />
-                    </StackPanel>
+                            <Label Content="{Binding Settings.ChromaKey.SpillSuppressionStrength, StringFormat='Potlačení spill: {0:0.00}'}" />
+                            <Slider Minimum="0" Maximum="1" Value="{Binding Settings.ChromaKey.SpillSuppressionStrength}" />
+                        </StackPanel>
+                    </ScrollViewer>
                 </TabItem>
 
                 <TabItem Header="Odečítání pozadí">
-                    <StackPanel Margin="16" MaxWidth="560" HorizontalAlignment="Left">
-                        <TextBlock Text="Vyfoťte prázdnou scénu (bez lidí) přesně tak, jak bude vypadat pozadí během akce. Kamera ani fotokoutek se pak nesmí hýbat."
-                                   Foreground="{StaticResource MutedTextBrush}" TextWrapping="Wrap" Margin="0,0,0,16" />
-                        <Button Content="VYFOTIT PRÁZDNÉ POZADÍ" Style="{StaticResource KioskSecondaryButton}"
-                                Command="{Binding CaptureBackgroundReferenceCommand}" HorizontalAlignment="Left" />
-                        <TextBlock Text="{Binding BackgroundReferenceStatus}" Foreground="{StaticResource AccentBrush}"
-                                   TextWrapping="Wrap" Margin="0,12,0,24" />
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Margin="16" MaxWidth="560" HorizontalAlignment="Left">
+                            <TextBlock Text="Vyfoťte prázdnou scénu (bez lidí) přesně tak, jak bude vypadat pozadí během akce. Kamera ani fotokoutek se pak nesmí hýbat."
+                                       Foreground="{StaticResource MutedTextBrush}" TextWrapping="Wrap" Margin="0,0,0,16" />
+                            <Button Content="VYFOTIT PRÁZDNÉ POZADÍ" Style="{StaticResource KioskSecondaryButton}"
+                                    Command="{Binding CaptureBackgroundReferenceCommand}" HorizontalAlignment="Left" />
+                            <TextBlock Text="{Binding BackgroundReferenceStatus}" Foreground="{StaticResource AccentBrush}"
+                                       TextWrapping="Wrap" Margin="0,12,0,8" />
 
-                        <Label Content="{Binding Settings.BackgroundSubtraction.ThresholdDistance, StringFormat='Citlivost (práh rozdílu): {0:0}'}" />
-                        <Slider Minimum="5" Maximum="150" Value="{Binding Settings.BackgroundSubtraction.ThresholdDistance}" />
+                            <Border BorderBrush="{StaticResource MutedTextBrush}" BorderThickness="1" Width="320" Height="180"
+                                    HorizontalAlignment="Left" Margin="0,0,0,4"
+                                    Visibility="{Binding BackgroundReferenceImagePath, Converter={StaticResource NullToVisibilityConverter}}">
+                                <Image Source="{Binding BackgroundReferenceImagePath, Converter={StaticResource FilePathToImageConverter}, ConverterParameter=320}"
+                                       Stretch="Uniform" />
+                            </Border>
+                            <TextBlock Text="Toto je naposledy vyfocené pozadí. Pokud sedí, nic dalšího dělat nemusíte — pokud ne, klikněte na tlačítko výše znovu, přepíše se."
+                                       Foreground="{StaticResource MutedTextBrush}" TextWrapping="Wrap" Margin="0,0,0,24"
+                                       Visibility="{Binding BackgroundReferenceImagePath, Converter={StaticResource NullToVisibilityConverter}}" />
 
-                        <Label Content="{Binding Settings.BackgroundSubtraction.FeatherPixels, StringFormat='Feather (px): {0:0.0}'}" />
-                        <Slider Minimum="0" Maximum="20" Value="{Binding Settings.BackgroundSubtraction.FeatherPixels}" />
-                    </StackPanel>
+                            <Label Content="{Binding Settings.BackgroundSubtraction.ThresholdDistance, StringFormat='Citlivost (práh rozdílu): {0:0}'}" />
+                            <Slider Minimum="5" Maximum="150" Value="{Binding Settings.BackgroundSubtraction.ThresholdDistance}" />
+
+                            <Label Content="{Binding Settings.BackgroundSubtraction.FeatherPixels, StringFormat='Feather (px): {0:0.0}'}" />
+                            <Slider Minimum="0" Maximum="20" Value="{Binding Settings.BackgroundSubtraction.FeatherPixels}" />
+                        </StackPanel>
+                    </ScrollViewer>
                 </TabItem>
 
                 <TabItem Header="AI / Hybrid">
-                    <StackPanel Margin="16" MaxWidth="480" HorizontalAlignment="Left">
-                        <Label Content="Režim odstranění pozadí" />
-                        <ComboBox SelectedValue="{Binding Settings.Ui.BackgroundRemovalMode}" SelectedValuePath="Content" Margin="0,0,0,16">
-                            <ComboBoxItem Content="GreenScreen" />
-                            <ComboBoxItem Content="Ai" />
-                            <ComboBoxItem Content="Hybrid" />
-                            <ComboBoxItem Content="BackgroundSubtraction" />
-                            <ComboBoxItem Content="BackgroundSubtractionHybrid" />
-                            <ComboBoxItem Content="Auto" />
-                        </ComboBox>
-                        <Label Content="Model pro náhled (rychlý)" />
-                        <TextBox Text="{Binding Settings.Ai.PreviewModelPath}" />
-                        <Label Content="Model pro finální fotografii (přesnější, pomalejší)" />
-                        <TextBox Text="{Binding Settings.Ai.FinalModelPath}" />
-                        <CheckBox Content="Preferovat DirectML (GPU) na Windows" IsChecked="{Binding Settings.Ai.PreferDirectML}" />
-                        <Label Content="Preview inference FPS" />
-                        <TextBox Text="{Binding Settings.Ai.PreviewInferenceFps}" />
-                    </StackPanel>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Margin="16" MaxWidth="480" HorizontalAlignment="Left">
+                            <Label Content="Režim odstranění pozadí" />
+                            <ComboBox SelectedValue="{Binding Settings.Ui.BackgroundRemovalMode}" SelectedValuePath="Content" Margin="0,0,0,16">
+                                <ComboBoxItem Content="GreenScreen" />
+                                <ComboBoxItem Content="Ai" />
+                                <ComboBoxItem Content="Hybrid" />
+                                <ComboBoxItem Content="BackgroundSubtraction" />
+                                <ComboBoxItem Content="BackgroundSubtractionHybrid" />
+                                <ComboBoxItem Content="Auto" />
+                            </ComboBox>
+                            <Label Content="Model pro náhled (rychlý)" />
+                            <TextBox Text="{Binding Settings.Ai.PreviewModelPath}" />
+                            <Label Content="Model pro finální fotografii (přesnější, pomalejší)" />
+                            <TextBox Text="{Binding Settings.Ai.FinalModelPath}" />
+                            <CheckBox Content="Preferovat DirectML (GPU) na Windows" IsChecked="{Binding Settings.Ai.PreferDirectML}" />
+                            <Label Content="Preview inference FPS" />
+                            <TextBox Text="{Binding Settings.Ai.PreviewInferenceFps}" />
+                        </StackPanel>
+                    </ScrollViewer>
                 </TabItem>
 
                 <TabItem Header="Logo / Text">
-                    <StackPanel Margin="16" MaxWidth="560" HorizontalAlignment="Left">
-                        <CheckBox Content="Přidávat logo/text na finální fotografii" IsChecked="{Binding Settings.Branding.Enabled}" />
-                        <TextBlock Text="Aplikuje se jen na výslednou fotku (ne na živý náhled), navíc k případnému celoplošnému overlay."
-                                   Foreground="{StaticResource MutedTextBrush}" TextWrapping="Wrap" Margin="0,0,0,16" />
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Margin="16" MaxWidth="560" HorizontalAlignment="Left">
+                            <CheckBox Content="Přidávat logo/text na finální fotografii" IsChecked="{Binding Settings.Branding.Enabled}" />
+                            <TextBlock Text="Aplikuje se jen na výslednou fotku (ne na živý náhled), navíc k případnému celoplošnému overlay."
+                                       Foreground="{StaticResource MutedTextBrush}" TextWrapping="Wrap" Margin="0,0,0,16" />
 
-                        <TextBlock Text="Text (baner)" Style="{StaticResource SectionTitle}" FontSize="18" />
-                        <Label Content="Text — např. název akce a datum (prázdné = bez textu)" />
-                        <TextBox Text="{Binding Settings.Branding.BannerText}" />
-                        <Label Content="Styl baneru" />
-                        <ComboBox SelectedValue="{Binding Settings.Branding.BannerStyle}" SelectedValuePath="Content" Margin="0,0,0,12">
-                            <ComboBoxItem Content="Bar" ToolTip="Plný pruh přes celou šířku" />
-                            <ComboBoxItem Content="Pill" ToolTip="Zaoblená 'pilulka' jen kolem textu" />
-                            <ComboBoxItem Content="Ribbon" ToolTip="Pruh se zlatými linkami — elegantní/svatební" />
-                            <ComboBoxItem Content="Minimal" ToolTip="Jen text s jemným stínem, bez pozadí" />
-                        </ComboBox>
-                        <Label Content="Svislé umístění" />
-                        <ComboBox SelectedValue="{Binding Settings.Branding.BannerPosition}" SelectedValuePath="Content" Margin="0,0,0,4">
-                            <ComboBoxItem Content="Top" />
-                            <ComboBoxItem Content="Bottom" />
-                            <ComboBoxItem Content="Custom" />
-                        </ComboBox>
-                        <Label Content="{Binding Settings.Branding.BannerYPercent, StringFormat='Vlastní svislá pozice (% výšky, jen pro Custom): {0:0}'}" />
-                        <Slider Minimum="0" Maximum="100" Value="{Binding Settings.Branding.BannerYPercent}" />
-                        <Label Content="Vodorovné zarovnání textu" />
-                        <ComboBox SelectedValue="{Binding Settings.Branding.BannerAlignment}" SelectedValuePath="Content" Margin="0,0,0,4">
-                            <ComboBoxItem Content="Left" />
-                            <ComboBoxItem Content="Center" />
-                            <ComboBoxItem Content="Right" />
-                        </ComboBox>
-                        <Label Content="{Binding Settings.Branding.BannerMarginPercent, StringFormat='Okraj pro Left/Right (% šířky): {0:0}'}" />
-                        <Slider Minimum="0" Maximum="20" Value="{Binding Settings.Branding.BannerMarginPercent}" />
-                        <Label Content="{Binding Settings.Branding.FontSizePercent, StringFormat='Velikost písma (% výšky fotky): {0:0.0}'}" />
-                        <Slider Minimum="1" Maximum="12" Value="{Binding Settings.Branding.FontSizePercent}" />
-                        <Label Content="Barva textu (#RRGGBB nebo #RRGGBBAA)" />
-                        <TextBox Text="{Binding Settings.Branding.TextColorHex}" />
-                        <Label Content="Barva pozadí baneru (prázdné = bez výplně)" />
-                        <TextBox Text="{Binding Settings.Branding.BannerBackgroundHex}" />
-                        <Label Content="Barva linek u stylu Ribbon" />
-                        <TextBox Text="{Binding Settings.Branding.AccentColorHex}" />
+                            <TextBlock Text="Text (baner)" Style="{StaticResource SectionTitle}" FontSize="18" />
+                            <Label Content="Text — např. název akce a datum (prázdné = bez textu)" />
+                            <TextBox Text="{Binding Settings.Branding.BannerText}" />
+                            <Label Content="Styl baneru" />
+                            <ComboBox SelectedValue="{Binding Settings.Branding.BannerStyle}" SelectedValuePath="Content" Margin="0,0,0,12">
+                                <ComboBoxItem Content="Bar" ToolTip="Plný pruh přes celou šířku" />
+                                <ComboBoxItem Content="Pill" ToolTip="Zaoblená 'pilulka' jen kolem textu" />
+                                <ComboBoxItem Content="Ribbon" ToolTip="Pruh se zlatými linkami — elegantní/svatební" />
+                                <ComboBoxItem Content="Minimal" ToolTip="Jen text s jemným stínem, bez pozadí" />
+                            </ComboBox>
+                            <Label Content="Svislé umístění" />
+                            <ComboBox SelectedValue="{Binding Settings.Branding.BannerPosition}" SelectedValuePath="Content" Margin="0,0,0,4">
+                                <ComboBoxItem Content="Top" />
+                                <ComboBoxItem Content="Bottom" />
+                                <ComboBoxItem Content="Custom" />
+                            </ComboBox>
+                            <Label Content="{Binding Settings.Branding.BannerYPercent, StringFormat='Vlastní svislá pozice (% výšky, jen pro Custom): {0:0}'}" />
+                            <Slider Minimum="0" Maximum="100" Value="{Binding Settings.Branding.BannerYPercent}" />
+                            <Label Content="Vodorovné zarovnání textu" />
+                            <ComboBox SelectedValue="{Binding Settings.Branding.BannerAlignment}" SelectedValuePath="Content" Margin="0,0,0,4">
+                                <ComboBoxItem Content="Left" />
+                                <ComboBoxItem Content="Center" />
+                                <ComboBoxItem Content="Right" />
+                            </ComboBox>
+                            <Label Content="{Binding Settings.Branding.BannerMarginPercent, StringFormat='Okraj pro Left/Right (% šířky): {0:0}'}" />
+                            <Slider Minimum="0" Maximum="20" Value="{Binding Settings.Branding.BannerMarginPercent}" />
+                            <Label Content="{Binding Settings.Branding.FontSizePercent, StringFormat='Velikost písma (% výšky fotky): {0:0.0}'}" />
+                            <Slider Minimum="1" Maximum="12" Value="{Binding Settings.Branding.FontSizePercent}" />
+                            <Label Content="Barva textu (#RRGGBB nebo #RRGGBBAA)" />
+                            <TextBox Text="{Binding Settings.Branding.TextColorHex}" />
+                            <Label Content="Barva pozadí baneru (prázdné = bez výplně)" />
+                            <TextBox Text="{Binding Settings.Branding.BannerBackgroundHex}" />
+                            <Label Content="Barva linek u stylu Ribbon" />
+                            <TextBox Text="{Binding Settings.Branding.AccentColorHex}" />
 
-                        <TextBlock Text="Logo" Style="{StaticResource SectionTitle}" FontSize="18" />
-                        <Label Content="Cesta k PNG logu (prázdné = bez loga, doporučeno průhledné PNG)" />
-                        <TextBox Text="{Binding Settings.Branding.LogoPath}" />
-                        <Label Content="Umístění" />
-                        <ComboBox SelectedValue="{Binding Settings.Branding.LogoCorner}" SelectedValuePath="Content" Margin="0,0,0,4">
-                            <ComboBoxItem Content="TopLeft" />
-                            <ComboBoxItem Content="TopRight" />
-                            <ComboBoxItem Content="BottomLeft" />
-                            <ComboBoxItem Content="BottomRight" />
-                            <ComboBoxItem Content="Custom" />
-                        </ComboBox>
-                        <Label Content="{Binding Settings.Branding.LogoXPercent, StringFormat='Vlastní X (% šířky, jen pro Custom): {0:0}'}" />
-                        <Slider Minimum="0" Maximum="100" Value="{Binding Settings.Branding.LogoXPercent}" />
-                        <Label Content="{Binding Settings.Branding.LogoYPercent, StringFormat='Vlastní Y (% výšky, jen pro Custom): {0:0}'}" />
-                        <Slider Minimum="0" Maximum="100" Value="{Binding Settings.Branding.LogoYPercent}" />
-                        <Label Content="{Binding Settings.Branding.LogoWidthPercent, StringFormat='Šířka loga (% šířky fotky): {0:0}'}" />
-                        <Slider Minimum="3" Maximum="40" Value="{Binding Settings.Branding.LogoWidthPercent}" />
-                    </StackPanel>
+                            <TextBlock Text="Logo" Style="{StaticResource SectionTitle}" FontSize="18" />
+                            <Label Content="Cesta k PNG logu (prázdné = bez loga, doporučeno průhledné PNG)" />
+                            <TextBox Text="{Binding Settings.Branding.LogoPath}" />
+                            <Label Content="Umístění" />
+                            <ComboBox SelectedValue="{Binding Settings.Branding.LogoCorner}" SelectedValuePath="Content" Margin="0,0,0,4">
+                                <ComboBoxItem Content="TopLeft" />
+                                <ComboBoxItem Content="TopRight" />
+                                <ComboBoxItem Content="BottomLeft" />
+                                <ComboBoxItem Content="BottomRight" />
+                                <ComboBoxItem Content="Custom" />
+                            </ComboBox>
+                            <Label Content="{Binding Settings.Branding.LogoXPercent, StringFormat='Vlastní X (% šířky, jen pro Custom): {0:0}'}" />
+                            <Slider Minimum="0" Maximum="100" Value="{Binding Settings.Branding.LogoXPercent}" />
+                            <Label Content="{Binding Settings.Branding.LogoYPercent, StringFormat='Vlastní Y (% výšky, jen pro Custom): {0:0}'}" />
+                            <Slider Minimum="0" Maximum="100" Value="{Binding Settings.Branding.LogoYPercent}" />
+                            <Label Content="{Binding Settings.Branding.LogoWidthPercent, StringFormat='Šířka loga (% šířky fotky): {0:0}'}" />
+                            <Slider Minimum="3" Maximum="40" Value="{Binding Settings.Branding.LogoWidthPercent}" />
+                        </StackPanel>
+                    </ScrollViewer>
                 </TabItem>
 
                 <TabItem Header="Tisk">
-                    <StackPanel Margin="16" MaxWidth="480" HorizontalAlignment="Left">
-                        <Label Content="Tiskárna" />
-                        <ComboBox ItemsSource="{Binding AvailablePrinters}" DisplayMemberPath="Name"
-                                  SelectedValue="{Binding Settings.Print.PrinterName}" SelectedValuePath="Name" Margin="0,0,0,12" />
-                        <Label Content="Formát papíru" />
-                        <TextBox Text="{Binding Settings.Print.PaperSize}" />
-                        <Label Content="Počet kopií" />
-                        <TextBox Text="{Binding Settings.Print.Copies}" />
-                        <CheckBox Content="Automaticky tisknout po vyfocení" IsChecked="{Binding Settings.Print.AutoPrint}" />
-                    </StackPanel>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Margin="16" MaxWidth="480" HorizontalAlignment="Left">
+                            <Label Content="Tiskárna" />
+                            <ComboBox ItemsSource="{Binding AvailablePrinters}" DisplayMemberPath="Name"
+                                      SelectedValue="{Binding Settings.Print.PrinterName}" SelectedValuePath="Name" Margin="0,0,0,12" />
+                            <Label Content="Formát papíru" />
+                            <TextBox Text="{Binding Settings.Print.PaperSize}" />
+                            <Label Content="Počet kopií" />
+                            <TextBox Text="{Binding Settings.Print.Copies}" />
+                            <CheckBox Content="Automaticky tisknout po vyfocení" IsChecked="{Binding Settings.Print.AutoPrint}" />
+                        </StackPanel>
+                    </ScrollViewer>
                 </TabItem>
 
                 <TabItem Header="Tisk QR kódu">
-                    <StackPanel Margin="16" MaxWidth="480" HorizontalAlignment="Left">
-                        <CheckBox Content="Povolit tisk QR kódu (BT/POS tiskárna)" IsChecked="{Binding Settings.ReceiptPrinter.Enabled}" Margin="0,0,0,12" />
-                        <Label Content="COM port" />
-                        <ComboBox ItemsSource="{Binding AvailableReceiptPorts}"
-                                  SelectedItem="{Binding Settings.ReceiptPrinter.PortName}" Margin="0,0,0,12" IsEditable="True" />
-                        <Label Content="Rychlost (baud)" />
-                        <TextBox Text="{Binding Settings.ReceiptPrinter.BaudRate}" Margin="0,0,0,12" />
-                        <Label Content="Šířka papíru (body — 384 = 58mm, 576 = 80mm)" />
-                        <TextBox Text="{Binding Settings.ReceiptPrinter.PaperWidthDots}" Margin="0,0,0,12" />
-                        <Label Content="Text nahoře" />
-                        <TextBox Text="{Binding Settings.ReceiptPrinter.HeaderText}" Margin="0,0,0,12" />
-                        <Label Content="Text dole" />
-                        <TextBox Text="{Binding Settings.ReceiptPrinter.FooterText}" Margin="0,0,0,12" />
-                        <CheckBox Content="Automaticky vytisknout po synchronizaci s cloudem (jinak jen tlačítkem)" IsChecked="{Binding Settings.ReceiptPrinter.AutoPrintReceipt}" />
-                    </StackPanel>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Margin="16" MaxWidth="480" HorizontalAlignment="Left">
+                            <CheckBox Content="Povolit tisk QR kódu (BT/POS tiskárna)" IsChecked="{Binding Settings.ReceiptPrinter.Enabled}" Margin="0,0,0,12" />
+                            <Label Content="COM port" />
+                            <ComboBox ItemsSource="{Binding AvailableReceiptPorts}"
+                                      SelectedItem="{Binding Settings.ReceiptPrinter.PortName}" Margin="0,0,0,12" IsEditable="True" />
+                            <Label Content="Rychlost (baud)" />
+                            <TextBox Text="{Binding Settings.ReceiptPrinter.BaudRate}" Margin="0,0,0,12" />
+                            <Label Content="Šířka papíru (body — 384 = 58mm, 576 = 80mm)" />
+                            <TextBox Text="{Binding Settings.ReceiptPrinter.PaperWidthDots}" Margin="0,0,0,12" />
+                            <Label Content="Text nahoře" />
+                            <TextBox Text="{Binding Settings.ReceiptPrinter.HeaderText}" Margin="0,0,0,12" />
+                            <Label Content="Text dole" />
+                            <TextBox Text="{Binding Settings.ReceiptPrinter.FooterText}" Margin="0,0,0,12" />
+                            <CheckBox Content="Automaticky vytisknout po synchronizaci s cloudem (jinak jen tlačítkem)" IsChecked="{Binding Settings.ReceiptPrinter.AutoPrintReceipt}" />
+                        </StackPanel>
+                    </ScrollViewer>
                 </TabItem>
 
                 <TabItem Header="Cloud">
-                    <StackPanel Margin="16" MaxWidth="480" HorizontalAlignment="Left">
-                        <CheckBox Content="Povolit Cloudflare synchronizaci" IsChecked="{Binding Settings.Cloud.Enabled}" />
-                        <Label Content="API URL" />
-                        <TextBox Text="{Binding Settings.Cloud.ApiBaseUrl}" />
-                        <Label Content="Interval synchronizace (s)" />
-                        <TextBox Text="{Binding Settings.Cloud.SyncIntervalSeconds}" />
-                        <Label Content="Galerie URL" />
-                        <TextBox Text="{Binding Settings.Cloud.GalleryBaseUrl}" />
-                        <TextBlock Text="{Binding Settings.Cloud.DeviceId, StringFormat='Spárované zařízení: {0}', FallbackValue='Spárované zařízení: (nespárováno)'}"
-                                   Foreground="{StaticResource MutedTextBrush}" Margin="0,8,0,16" />
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Margin="16" MaxWidth="480" HorizontalAlignment="Left">
+                            <CheckBox Content="Povolit Cloudflare synchronizaci" IsChecked="{Binding Settings.Cloud.Enabled}" />
+                            <Label Content="API URL" />
+                            <TextBox Text="{Binding Settings.Cloud.ApiBaseUrl}" />
+                            <Label Content="Interval synchronizace (s)" />
+                            <TextBox Text="{Binding Settings.Cloud.SyncIntervalSeconds}" />
+                            <Label Content="Galerie URL" />
+                            <TextBox Text="{Binding Settings.Cloud.GalleryBaseUrl}" />
+                            <TextBlock Text="{Binding Settings.Cloud.DeviceId, StringFormat='Spárované zařízení: {0}', FallbackValue='Spárované zařízení: (nespárováno)'}"
+                                       Foreground="{StaticResource MutedTextBrush}" Margin="0,8,0,16" />
 
-                        <Button Content="SPÁROVAT ZAŘÍZENÍ" Style="{StaticResource KioskSecondaryButton}"
-                                Command="{Binding PairDeviceCommand}" HorizontalAlignment="Left" />
+                            <Button Content="SPÁROVAT ZAŘÍZENÍ" Style="{StaticResource KioskSecondaryButton}"
+                                    Command="{Binding PairDeviceCommand}" HorizontalAlignment="Left" />
 
-                        <TextBlock Text="{Binding PairingCode}" FontSize="32" FontWeight="Bold"
-                                   Foreground="{StaticResource AccentBrush}" Margin="0,16,0,0"
-                                   Visibility="{Binding PairingCode, Converter={StaticResource NullToVisibilityConverter}}" />
-                        <TextBlock Text="{Binding PairingStatusMessage}" TextWrapping="Wrap"
-                                   Foreground="{StaticResource MutedTextBrush}" Margin="0,8,0,0" />
-                    </StackPanel>
+                            <TextBlock Text="{Binding PairingCode}" FontSize="32" FontWeight="Bold"
+                                       Foreground="{StaticResource AccentBrush}" Margin="0,16,0,0"
+                                       Visibility="{Binding PairingCode, Converter={StaticResource NullToVisibilityConverter}}" />
+                            <TextBlock Text="{Binding PairingStatusMessage}" TextWrapping="Wrap"
+                                       Foreground="{StaticResource MutedTextBrush}" Margin="0,8,0,0" />
+                        </StackPanel>
+                    </ScrollViewer>
                 </TabItem>
 
                 <TabItem Header="Diagnostika">
-                    <StackPanel Margin="16" MaxWidth="640" HorizontalAlignment="Left">
-                        <TextBlock Text="{Binding DiagCameraStatus, StringFormat='Kamera: {0}'}" Foreground="{StaticResource TextBrush}" Margin="0,0,0,6" />
-                        <TextBlock Text="{Binding DiagPreviewFps, StringFormat='Preview FPS: {0:0.0}'}" Foreground="{StaticResource TextBrush}" Margin="0,0,0,6" />
-                        <TextBlock Text="{Binding DiagChromaOrAiMs, StringFormat='Green screen / AI: {0:0.0} ms'}" Foreground="{StaticResource TextBrush}" Margin="0,0,0,6" />
-                        <TextBlock Text="{Binding DiagCompositionMs, StringFormat='Kompozice: {0:0.0} ms'}" Foreground="{StaticResource TextBrush}" Margin="0,0,0,6" />
-                        <TextBlock Text="{Binding DiagPrinterStatus, StringFormat='Tiskárna: {0}'}" Foreground="{StaticResource TextBrush}" Margin="0,0,0,6" />
-                        <TextBlock Text="{Binding DiagCloudStatus, StringFormat='Cloud: {0}'}" Foreground="{StaticResource TextBrush}" Margin="0,0,0,6" />
-                        <TextBlock Text="{Binding DiagSyncQueueCount, StringFormat='Sync queue: {0}'}" Foreground="{StaticResource TextBrush}" Margin="0,0,0,6" />
-                        <TextBlock Text="{Binding DiagDiskFree, StringFormat='Volné místo na disku: {0}'}" Foreground="{StaticResource TextBrush}" Margin="0,0,0,16" />
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Margin="16" MaxWidth="640" HorizontalAlignment="Left">
+                            <TextBlock Text="{Binding DiagCameraStatus, StringFormat='Kamera: {0}'}" Foreground="{StaticResource TextBrush}" Margin="0,0,0,6" />
+                            <TextBlock Text="{Binding DiagPreviewFps, StringFormat='Preview FPS: {0:0.0}'}" Foreground="{StaticResource TextBrush}" Margin="0,0,0,6" />
+                            <TextBlock Text="{Binding DiagChromaOrAiMs, StringFormat='Green screen / AI: {0:0.0} ms'}" Foreground="{StaticResource TextBrush}" Margin="0,0,0,6" />
+                            <TextBlock Text="{Binding DiagCompositionMs, StringFormat='Kompozice: {0:0.0} ms'}" Foreground="{StaticResource TextBrush}" Margin="0,0,0,6" />
+                            <TextBlock Text="{Binding DiagPrinterStatus, StringFormat='Tiskárna: {0}'}" Foreground="{StaticResource TextBrush}" Margin="0,0,0,6" />
+                            <TextBlock Text="{Binding DiagCloudStatus, StringFormat='Cloud: {0}'}" Foreground="{StaticResource TextBrush}" Margin="0,0,0,6" />
+                            <TextBlock Text="{Binding DiagSyncQueueCount, StringFormat='Sync queue: {0}'}" Foreground="{StaticResource TextBrush}" Margin="0,0,0,6" />
+                            <TextBlock Text="{Binding DiagDiskFree, StringFormat='Volné místo na disku: {0}'}" Foreground="{StaticResource TextBrush}" Margin="0,0,0,16" />
 
-                        <WrapPanel>
-                            <Button Content="Test kamery" Style="{StaticResource KioskSecondaryButton}" FontSize="16" Margin="0,0,8,8"
-                                    Command="{Binding TestCameraCommand}" />
-                            <Button Content="Test snímku" Style="{StaticResource KioskSecondaryButton}" FontSize="16" Margin="0,0,8,8"
-                                    Command="{Binding TestCaptureCommand}" />
-                            <Button Content="Test AI" Style="{StaticResource KioskSecondaryButton}" FontSize="16" Margin="0,0,8,8"
-                                    Command="{Binding TestAiCommand}" />
-                            <Button Content="Test tisku" Style="{StaticResource KioskSecondaryButton}" FontSize="16" Margin="0,0,8,8"
-                                    Command="{Binding TestPrintCommand}" />
-                            <Button Content="Test tisku QR" Style="{StaticResource KioskSecondaryButton}" FontSize="16" Margin="0,0,8,8"
-                                    Command="{Binding TestReceiptPrinterCommand}" />
-                            <Button Content="Test cloudu" Style="{StaticResource KioskSecondaryButton}" FontSize="16" Margin="0,0,8,8"
-                                    Command="{Binding TestCloudCommand}" />
-                            <Button Content="Sync now" Style="{StaticResource KioskSecondaryButton}" FontSize="16" Margin="0,0,8,8"
-                                    Command="{Binding SyncNowCommand}" />
-                        </WrapPanel>
+                            <WrapPanel>
+                                <Button Content="Test kamery" Style="{StaticResource KioskSecondaryButton}" FontSize="16" Margin="0,0,8,8"
+                                        Command="{Binding TestCameraCommand}" />
+                                <Button Content="Test snímku" Style="{StaticResource KioskSecondaryButton}" FontSize="16" Margin="0,0,8,8"
+                                        Command="{Binding TestCaptureCommand}" />
+                                <Button Content="Test AI" Style="{StaticResource KioskSecondaryButton}" FontSize="16" Margin="0,0,8,8"
+                                        Command="{Binding TestAiCommand}" />
+                                <Button Content="Test tisku" Style="{StaticResource KioskSecondaryButton}" FontSize="16" Margin="0,0,8,8"
+                                        Command="{Binding TestPrintCommand}" />
+                                <Button Content="Test tisku QR" Style="{StaticResource KioskSecondaryButton}" FontSize="16" Margin="0,0,8,8"
+                                        Command="{Binding TestReceiptPrinterCommand}" />
+                                <Button Content="Test cloudu" Style="{StaticResource KioskSecondaryButton}" FontSize="16" Margin="0,0,8,8"
+                                        Command="{Binding TestCloudCommand}" />
+                                <Button Content="Sync now" Style="{StaticResource KioskSecondaryButton}" FontSize="16" Margin="0,0,8,8"
+                                        Command="{Binding SyncNowCommand}" />
+                            </WrapPanel>
 
-                        <TextBlock Text="{Binding DiagTestMessage}" TextWrapping="Wrap"
-                                   Foreground="{StaticResource AccentBrush}" Margin="0,12,0,0" />
-                    </StackPanel>
+                            <TextBlock Text="{Binding DiagTestMessage}" TextWrapping="Wrap"
+                                       Foreground="{StaticResource AccentBrush}" Margin="0,12,0,0" />
+                        </StackPanel>
+                    </ScrollViewer>
                 </TabItem>
             </TabControl>
         </Grid>

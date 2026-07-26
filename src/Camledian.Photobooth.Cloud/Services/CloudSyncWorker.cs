@@ -111,7 +111,7 @@ public sealed class CloudSyncWorker(
 
             await using (var stream = File.OpenRead(photo.FinalPath))
             {
-                await CloudApiClient.UploadToPresignedUrlAsync(created.UploadUrl, stream, "image/jpeg", token).ConfigureAwait(false);
+                await apiClient.UploadPhotoBytesAsync(settings.DeviceToken!, created.UploadUrl, stream, "image/jpeg", token).ConfigureAwait(false);
             }
 
             var completed = await apiClient.CompleteUploadAsync(settings.DeviceToken!, created.PhotoId, token).ConfigureAwait(false);

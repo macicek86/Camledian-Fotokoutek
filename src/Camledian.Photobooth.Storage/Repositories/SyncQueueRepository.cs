@@ -63,6 +63,22 @@ public class SyncQueueRepository(SqliteConnectionFactory connectionFactory)
         return results;
     }
 
+    /// <summary>Looks up the queue entry for a just-captured photo, so the Result-screen polling
+    /// loop can tell a permanently-failed upload apart from one still legitimately in progress
+    /// instead of showing "synchronizuje..." forever.</summary>
+    public async Task<SyncQueueItem?> GetByPhotoIdAsync(string photoId, CancellationToken cancellationToken = default)
+    {
+        using var connection = connectionFactory.Create();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT Id, PhotoId, Status, Attempts, NextAttemptAtUtc, LastError, CreatedAtUtc FROM SyncQueue
+            WHERE PhotoId = $photoId
+            """;
+        command.Parameters.AddWithValue("$photoId", photoId);
+        using var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+        return await reader.ReadAsync(cancellationToken).ConfigureAwait(false) ? Map(reader) : null;
+    }
+
     public async Task<int> CountPendingAsync(CancellationToken cancellationToken = default)
     {
         using var connection = connectionFactory.Create();

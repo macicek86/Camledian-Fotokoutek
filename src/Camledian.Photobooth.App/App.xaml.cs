@@ -127,10 +127,12 @@ public partial class App : Application
         services.AddSingleton<IPrintingService, WindowsPrintingService>();
         services.AddSingleton<IReceiptPrinterService, SerialReceiptPrinterService>();
 
-        // Cloud (spec §35/§36/§37/§38/§40): base URL is read once at startup — changing it in Admin
-        // takes effect after a restart, same as changing the camera device.
+        // Cloud (spec §35/§36/§37/§38/§40): the base URL is re-read from settings on every request
+        // (see CloudApiClient.BuildUri) so an admin editing it in the Cloud tab takes effect
+        // immediately — no app restart needed, same as every other live-editable setting.
         services.AddSingleton(sp => new CloudApiClient(
-            new HttpClient { BaseAddress = new Uri(sp.GetRequiredService<SettingsService>().Current.Cloud.ApiBaseUrl) }));
+            new HttpClient(),
+            () => sp.GetRequiredService<SettingsService>().Current.Cloud.ApiBaseUrl));
         services.AddSingleton<DevicePairingService>();
         services.AddSingleton(sp => new AssetManifestSyncService(
             sp.GetRequiredService<CloudApiClient>(),
