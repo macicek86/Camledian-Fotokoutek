@@ -1,0 +1,199 @@
+<UserControl x:Class="Camledian.Photobooth.App.Views.AdminView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="1280" d:DesignHeight="720">
+    <UserControl.Resources>
+        <Style TargetType="Label">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="FontSize" Value="16" />
+        </Style>
+        <Style TargetType="TextBox">
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="Margin" Value="0,0,0,12" />
+            <Setter Property="Padding" Value="6" />
+        </Style>
+        <Style TargetType="CheckBox">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="Margin" Value="0,0,0,12" />
+        </Style>
+        <Style TargetType="Slider">
+            <Setter Property="Margin" Value="0,0,0,4" />
+        </Style>
+        <Style x:Key="SectionTitle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="FontSize" Value="20" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Margin" Value="0,16,0,8" />
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Background="{StaticResource BackgroundBrush}">
+        <!-- PIN gate -->
+        <Grid Visibility="{Binding IsAdminUnlocked, Converter={StaticResource InverseBoolToVisibilityConverter}}">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Width="360">
+                <TextBlock Text="Administrace" Style="{StaticResource ScreenTitle}" FontSize="36" HorizontalAlignment="Center" Margin="0,0,0,24" />
+                <PasswordBox x:Name="PinBox" FontSize="28" Padding="12" MaxLength="12" PasswordChanged="PinBox_OnPasswordChanged" />
+                <TextBlock Text="{Binding PinError}" Foreground="{StaticResource AccentBrush}" FontSize="16" Margin="0,8,0,16" HorizontalAlignment="Center" />
+                <Button Content="ODEMKNOUT" Style="{StaticResource KioskButton}" Command="{Binding SubmitPinCommand}" HorizontalAlignment="Center" />
+                <Button Content="Zpět" Style="{StaticResource KioskSecondaryButton}" FontSize="16" Margin="0,16,0,0"
+                        Command="{Binding CloseAdminCommand}" HorizontalAlignment="Center" />
+            </StackPanel>
+        </Grid>
+
+        <!-- Settings -->
+        <Grid Visibility="{Binding IsAdminUnlocked, Converter={StaticResource BoolToVisibilityConverter}}" Margin="32">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <DockPanel Grid.Row="0" LastChildFill="False" Margin="0,0,0,16">
+                <TextBlock Text="Nastavení" Style="{StaticResource ScreenTitle}" FontSize="32" DockPanel.Dock="Left" />
+                <Button Content="ULOŽIT A ZAVŘÍT" Style="{StaticResource KioskSecondaryButton}" DockPanel.Dock="Right"
+                        Command="{Binding CloseAdminCommand}" />
+            </DockPanel>
+
+            <TabControl Grid.Row="1" Background="Transparent">
+                <TabItem Header="Obecné">
+                    <StackPanel Margin="16" MaxWidth="480" HorizontalAlignment="Left">
+                        <CheckBox Content="Kiosk mode (fullscreen)" IsChecked="{Binding Settings.Ui.KioskMode}" />
+                        <Label Content="Odpočet (sekundy)" />
+                        <TextBox Text="{Binding Settings.Ui.CountdownSeconds}" />
+                        <Label Content="Timeout výsledkové obrazovky (sekundy)" />
+                        <TextBox Text="{Binding Settings.Ui.ResultScreenTimeoutSeconds}" />
+                        <Label Content="Admin PIN" />
+                        <TextBox Text="{Binding Settings.Ui.AdminPin}" />
+                    </StackPanel>
+                </TabItem>
+
+                <TabItem Header="Kamera">
+                    <StackPanel Margin="16" MaxWidth="480" HorizontalAlignment="Left">
+                        <TextBlock Text="{Binding AvailableCameras.Count, StringFormat='Nalezeno zařízení: {0}'}"
+                                   Foreground="{StaticResource MutedTextBrush}" Margin="0,0,0,12" />
+                        <Label Content="ID zařízení (prázdné = automaticky)" />
+                        <TextBox Text="{Binding Settings.Camera.SelectedDeviceId}" />
+                        <Label Content="Šířka" />
+                        <TextBox Text="{Binding Settings.Camera.RequestedWidth}" />
+                        <Label Content="Výška" />
+                        <TextBox Text="{Binding Settings.Camera.RequestedHeight}" />
+                        <Label Content="FPS" />
+                        <TextBox Text="{Binding Settings.Camera.RequestedFps}" />
+                        <CheckBox Content="Použít Mock kameru, pokud není fyzická k dispozici" IsChecked="{Binding Settings.Camera.UseMockIfUnavailable}" />
+                    </StackPanel>
+                </TabItem>
+
+                <TabItem Header="Green Screen">
+                    <StackPanel Margin="16" MaxWidth="560" HorizontalAlignment="Left">
+                        <Label Content="{Binding Settings.ChromaKey.TargetHueDegrees, StringFormat='Cílová barva (odstín, °): {0:0}'}" />
+                        <Slider Minimum="0" Maximum="360" Value="{Binding Settings.ChromaKey.TargetHueDegrees}" />
+
+                        <Label Content="{Binding Settings.ChromaKey.HueToleranceDegrees, StringFormat='Tolerance odstínu (°): {0:0}'}" />
+                        <Slider Minimum="1" Maximum="90" Value="{Binding Settings.ChromaKey.HueToleranceDegrees}" />
+
+                        <Label Content="{Binding Settings.ChromaKey.SaturationThreshold, StringFormat='Práh saturace: {0:0.00}'}" />
+                        <Slider Minimum="0" Maximum="1" Value="{Binding Settings.ChromaKey.SaturationThreshold}" />
+
+                        <Label Content="{Binding Settings.ChromaKey.ValueThreshold, StringFormat='Práh jasu: {0:0.00}'}" />
+                        <Slider Minimum="0" Maximum="1" Value="{Binding Settings.ChromaKey.ValueThreshold}" />
+
+                        <Label Content="{Binding Settings.ChromaKey.FeatherPixels, StringFormat='Feather (px): {0:0.0}'}" />
+                        <Slider Minimum="0" Maximum="20" Value="{Binding Settings.ChromaKey.FeatherPixels}" />
+
+                        <Label Content="{Binding Settings.ChromaKey.EdgeSmoothingPixels, StringFormat='Vyhlazení hran (px): {0:0.0}'}" />
+                        <Slider Minimum="0" Maximum="20" Value="{Binding Settings.ChromaKey.EdgeSmoothingPixels}" />
+
+                        <Label Content="{Binding Settings.ChromaKey.SpillSuppressionStrength, StringFormat='Potlačení spill: {0:0.00}'}" />
+                        <Slider Minimum="0" Maximum="1" Value="{Binding Settings.ChromaKey.SpillSuppressionStrength}" />
+                    </StackPanel>
+                </TabItem>
+
+                <TabItem Header="AI / Hybrid">
+                    <StackPanel Margin="16" MaxWidth="480" HorizontalAlignment="Left">
+                        <Label Content="Režim odstranění pozadí" />
+                        <ComboBox SelectedValue="{Binding Settings.Ui.BackgroundRemovalMode}" SelectedValuePath="Content" Margin="0,0,0,16">
+                            <ComboBoxItem Content="GreenScreen" />
+                            <ComboBoxItem Content="Ai" />
+                            <ComboBoxItem Content="Hybrid" />
+                            <ComboBoxItem Content="Auto" />
+                        </ComboBox>
+                        <Label Content="Cesta k ONNX modelu" />
+                        <TextBox Text="{Binding Settings.Ai.ModelPath}" />
+                        <CheckBox Content="Preferovat DirectML (GPU) na Windows" IsChecked="{Binding Settings.Ai.PreferDirectML}" />
+                        <Label Content="Preview inference FPS" />
+                        <TextBox Text="{Binding Settings.Ai.PreviewInferenceFps}" />
+                    </StackPanel>
+                </TabItem>
+
+                <TabItem Header="Tisk">
+                    <StackPanel Margin="16" MaxWidth="480" HorizontalAlignment="Left">
+                        <Label Content="Tiskárna" />
+                        <ComboBox ItemsSource="{Binding AvailablePrinters}" DisplayMemberPath="Name"
+                                  SelectedValue="{Binding Settings.Print.PrinterName}" SelectedValuePath="Name" Margin="0,0,0,12" />
+                        <Label Content="Formát papíru" />
+                        <TextBox Text="{Binding Settings.Print.PaperSize}" />
+                        <Label Content="Počet kopií" />
+                        <TextBox Text="{Binding Settings.Print.Copies}" />
+                        <CheckBox Content="Automaticky tisknout po vyfocení" IsChecked="{Binding Settings.Print.AutoPrint}" />
+                    </StackPanel>
+                </TabItem>
+
+                <TabItem Header="Cloud">
+                    <StackPanel Margin="16" MaxWidth="480" HorizontalAlignment="Left">
+                        <CheckBox Content="Povolit Cloudflare synchronizaci" IsChecked="{Binding Settings.Cloud.Enabled}" />
+                        <Label Content="API URL" />
+                        <TextBox Text="{Binding Settings.Cloud.ApiBaseUrl}" />
+                        <Label Content="Interval synchronizace (s)" />
+                        <TextBox Text="{Binding Settings.Cloud.SyncIntervalSeconds}" />
+                        <Label Content="Galerie URL" />
+                        <TextBox Text="{Binding Settings.Cloud.GalleryBaseUrl}" />
+                        <TextBlock Text="{Binding Settings.Cloud.DeviceId, StringFormat='Spárované zařízení: {0}', FallbackValue='Spárované zařízení: (nespárováno)'}"
+                                   Foreground="{StaticResource MutedTextBrush}" Margin="0,8,0,16" />
+
+                        <Button Content="SPÁROVAT ZAŘÍZENÍ" Style="{StaticResource KioskSecondaryButton}"
+                                Command="{Binding PairDeviceCommand}" HorizontalAlignment="Left" />
+
+                        <TextBlock Text="{Binding PairingCode}" FontSize="32" FontWeight="Bold"
+                                   Foreground="{StaticResource AccentBrush}" Margin="0,16,0,0"
+                                   Visibility="{Binding PairingCode, Converter={StaticResource NullToVisibilityConverter}}" />
+                        <TextBlock Text="{Binding PairingStatusMessage}" TextWrapping="Wrap"
+                                   Foreground="{StaticResource MutedTextBrush}" Margin="0,8,0,0" />
+                    </StackPanel>
+                </TabItem>
+
+                <TabItem Header="Diagnostika">
+                    <StackPanel Margin="16" MaxWidth="640" HorizontalAlignment="Left">
+                        <TextBlock Text="{Binding DiagCameraStatus, StringFormat='Kamera: {0}'}" Foreground="{StaticResource TextBrush}" Margin="0,0,0,6" />
+                        <TextBlock Text="{Binding DiagPreviewFps, StringFormat='Preview FPS: {0:0.0}'}" Foreground="{StaticResource TextBrush}" Margin="0,0,0,6" />
+                        <TextBlock Text="{Binding DiagChromaOrAiMs, StringFormat='Green screen / AI: {0:0.0} ms'}" Foreground="{StaticResource TextBrush}" Margin="0,0,0,6" />
+                        <TextBlock Text="{Binding DiagCompositionMs, StringFormat='Kompozice: {0:0.0} ms'}" Foreground="{StaticResource TextBrush}" Margin="0,0,0,6" />
+                        <TextBlock Text="{Binding DiagPrinterStatus, StringFormat='Tiskárna: {0}'}" Foreground="{StaticResource TextBrush}" Margin="0,0,0,6" />
+                        <TextBlock Text="{Binding DiagCloudStatus, StringFormat='Cloud: {0}'}" Foreground="{StaticResource TextBrush}" Margin="0,0,0,6" />
+                        <TextBlock Text="{Binding DiagSyncQueueCount, StringFormat='Sync queue: {0}'}" Foreground="{StaticResource TextBrush}" Margin="0,0,0,6" />
+                        <TextBlock Text="{Binding DiagDiskFree, StringFormat='Volné místo na disku: {0}'}" Foreground="{StaticResource TextBrush}" Margin="0,0,0,16" />
+
+                        <WrapPanel>
+                            <Button Content="Test kamery" Style="{StaticResource KioskSecondaryButton}" FontSize="16" Margin="0,0,8,8"
+                                    Command="{Binding TestCameraCommand}" />
+                            <Button Content="Test snímku" Style="{StaticResource KioskSecondaryButton}" FontSize="16" Margin="0,0,8,8"
+                                    Command="{Binding TestCaptureCommand}" />
+                            <Button Content="Test AI" Style="{StaticResource KioskSecondaryButton}" FontSize="16" Margin="0,0,8,8"
+                                    Command="{Binding TestAiCommand}" />
+                            <Button Content="Test tisku" Style="{StaticResource KioskSecondaryButton}" FontSize="16" Margin="0,0,8,8"
+                                    Command="{Binding TestPrintCommand}" />
+                            <Button Content="Test cloudu" Style="{StaticResource KioskSecondaryButton}" FontSize="16" Margin="0,0,8,8"
+                                    Command="{Binding TestCloudCommand}" />
+                            <Button Content="Sync now" Style="{StaticResource KioskSecondaryButton}" FontSize="16" Margin="0,0,8,8"
+                                    Command="{Binding SyncNowCommand}" />
+                        </WrapPanel>
+
+                        <TextBlock Text="{Binding DiagTestMessage}" TextWrapping="Wrap"
+                                   Foreground="{StaticResource AccentBrush}" Margin="0,12,0,0" />
+                    </StackPanel>
+                </TabItem>
+            </TabControl>
+        </Grid>
+    </Grid>
+</UserControl>

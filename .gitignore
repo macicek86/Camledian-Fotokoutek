@@ -1,0 +1,33 @@
+.claude/settings.local.json
+
+# --- .NET ---
+bin/
+obj/
+*.user
+.vs/
+
+# --- Node / Cloudflare Workers ---
+node_modules/
+cloud/.wrangler/
+cloud/.dev.vars
+cloud/dist/
+*.tsbuildinfo
+npm-debug.log*
+
+# --- App runtime data (spec §51: never commit local DB, photos, logs, secrets) ---
+data/
+src/Camledian.Photobooth.App/data/
+**/photobooth.db
+**/photobooth.db-shm
+**/photobooth.db-wal
+*.log
+
+# --- Downloaded AI models (spec §22/§51: fetched by scripts/download-models.ps1, not committed) ---
+**/models/*.onnx
+
+# --- Editor / OS ---
+.vscode/
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Managed OpenCvSharp API (cross-platform, pure IL). The Windows native runtime below provides
+         the actual DirectShow/MSMF backed VideoCapture implementation used by WebcamCameraProvider.
+         It restores fine on Linux (used only for compile-time verification here); MockCameraProvider
+         has no native dependency at all and is what actually runs in this devcontainer and in CI
+         wherever a real camera/OpenCV runtime is unavailable. -->
+    <PackageReference Include="OpenCvSharp4" Version="4.10.0.20241108" />
+    <PackageReference Include="OpenCvSharp4.runtime.win" Version="4.10.0.20241108" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.9" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Camledian.Photobooth.Core\Camledian.Photobooth.Core.csproj" />
+    <ProjectReference Include="..\Camledian.Photobooth.Imaging\Camledian.Photobooth.Imaging.csproj" />
+  </ItemGroup>
+
+</Project>

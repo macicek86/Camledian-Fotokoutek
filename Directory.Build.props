@@ -1,0 +1,17 @@
+<Project>
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <!-- Allows compiling Windows-targeted projects (WPF, System.Drawing.Printing, ...) on non-Windows
+         hosts such as this Linux devcontainer. Only compilation is possible here; running/using the
+         Windows-specific APIs still requires an actual Windows machine or the GitHub Actions
+         windows-latest CI runner. -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <Company>Camledian</Company>
+    <Product>Camledian Photobooth</Product>
+    <NeutralLanguage>en</NeutralLanguage>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <InvariantGlobalization>false</InvariantGlobalization>
+  </PropertyGroup>
+</Project>

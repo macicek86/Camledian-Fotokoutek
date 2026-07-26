@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.10" />
+    <!-- Pin past the transitively-referenced SQLitePCLRaw.lib.e_sqlite3 2.1.x line, which has a known
+         CVE (GHSA-2m69-gcr7-jv3q); NuGet's highest-version-wins rule picks this one instead. -->
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Camledian.Photobooth.Core\Camledian.Photobooth.Core.csproj" />
+  </ItemGroup>
+
+</Project>

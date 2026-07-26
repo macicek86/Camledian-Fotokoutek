@@ -1,0 +1,49 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AssemblyName>CamledianPhotobooth</AssemblyName>
+    <RootNamespace>Camledian.Photobooth.App</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.9" />
+    <PackageReference Include="Serilog.Extensions.Hosting" Version="9.0.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
+    <PackageReference Include="Serilog.Sinks.Debug" Version="3.0.0" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Camledian.Photobooth.Core\Camledian.Photobooth.Core.csproj" />
+    <ProjectReference Include="..\Camledian.Photobooth.Imaging\Camledian.Photobooth.Imaging.csproj" />
+    <ProjectReference Include="..\Camledian.Photobooth.Camera\Camledian.Photobooth.Camera.csproj" />
+    <ProjectReference Include="..\Camledian.Photobooth.AI\Camledian.Photobooth.AI.csproj" />
+    <ProjectReference Include="..\Camledian.Photobooth.Storage\Camledian.Photobooth.Storage.csproj" />
+    <ProjectReference Include="..\Camledian.Photobooth.Printing\Camledian.Photobooth.Printing.csproj" />
+    <ProjectReference Include="..\Camledian.Photobooth.Cloud\Camledian.Photobooth.Cloud.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="appsettings.Development.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Bundled sample backgrounds/overlays (spec §11/§30) copied next to the built exe so the demo
+         event works on a completely clean checkout. -->
+    <Content Include="..\..\assets\**">
+      <Link>assets\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+</Project>

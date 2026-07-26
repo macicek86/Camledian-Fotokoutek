@@ -1,0 +1,52 @@
+name = "camledian-photobooth-api"
+main = "src/index.ts"
+compatibility_date = "2026-07-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Bound to its own subdomain, NOT camledian.art/* — that zone already routes to a separate
+# (e-shop) Worker, and Workers routes are matched by path pattern on a shared zone, so overlapping
+# patterns on the same domain can shadow/conflict with the existing site. A dedicated subdomain is a
+# completely independent route with zero risk of collision.
+[[routes]]
+pattern = "fotokoutek.camledian.art"
+custom_domain = true
+
+# --- D1 (spec §33) ---
+# Create with: wrangler d1 create camledian-photobooth
+# then paste the returned database_id below (or into .dev.vars / a per-env override).
+[[d1_databases]]
+binding = "DB"
+database_name = "camledian-photobooth"
+database_id = "89aaefef-3c27-42cb-bf30-3a7d4ce089d2"
+migrations_dir = "migrations"
+
+# --- R2 (spec §34) ---
+# Create with: wrangler r2 bucket create camledian-photobooth-assets
+[[r2_buckets]]
+binding = "ASSETS_BUCKET"
+bucket_name = "camledian-photobooth-assets"
+
+# --- Static assets (logo/favicon for the landing page, spec §31) ---
+# Files here are served directly by the platform; requests that don't match a file (e.g. "/")
+# fall through to the Worker's fetch handler, so this doesn't compete with the dynamic routes below.
+[assets]
+directory = "./public"
+
+# Daily cleanup of expired photos (spec §43).
+[triggers]
+crons = ["0 3 * * *"]
+
+[vars]
+# Non-secret defaults; override per-environment below or via `wrangler secret put`.
+DEFAULT_PHOTO_RETENTION_DAYS = "30"
+GALLERY_BASE_URL = "https://fotokoutek.camledian.art/foto"
+R2_BUCKET_NAME = "camledian-photobooth-assets"
+
+# Secrets (set via `wrangler secret put <NAME>`, never committed):
+#   ADMIN_API_KEY        - shared secret for the dev pairing-confirmation admin UI (spec §36)
+#   R2_ACCESS_KEY_ID      - R2 S3-compatible API token id, for presigned uploads (spec §34)
+#   R2_SECRET_ACCESS_KEY  - R2 S3-compatible API token secret
+#   R2_ACCOUNT_ID         - Cloudflare account id (for the R2 S3 endpoint URL)
+
+[env.development]
+vars = { DEFAULT_PHOTO_RETENTION_DAYS = "30", GALLERY_BASE_URL = "http://localhost:8787/foto" }

@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="QRCoder" Version="1.6.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.9" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Camledian.Photobooth.Core\Camledian.Photobooth.Core.csproj" />
+    <ProjectReference Include="..\Camledian.Photobooth.Storage\Camledian.Photobooth.Storage.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,17 @@
+<UserControl x:Class="Camledian.Photobooth.App.Views.ErrorView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="1280" d:DesignHeight="720">
+    <Grid Background="{StaticResource BackgroundBrush}">
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="800">
+            <TextBlock Text="Něco se nepovedlo" Style="{StaticResource ScreenTitle}" Foreground="{StaticResource AccentBrush}"
+                       HorizontalAlignment="Center" Margin="0,0,0,16" />
+            <TextBlock Text="{Binding ErrorMessage}" Style="{StaticResource ScreenSubtitle}" TextWrapping="Wrap"
+                       TextAlignment="Center" Margin="0,0,0,32" />
+            <Button Content="OK" Style="{StaticResource KioskButton}" Command="{Binding AcknowledgeErrorCommand}"
+                    HorizontalAlignment="Center" />
+        </StackPanel>
+    </Grid>
+</UserControl>

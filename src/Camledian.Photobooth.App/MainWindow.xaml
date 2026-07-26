@@ -1,0 +1,24 @@
+<Window x:Class="Camledian.Photobooth.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:views="clr-namespace:Camledian.Photobooth.App.Views"
+        mc:Ignorable="d"
+        Title="Camledian Photobooth" Height="800" Width="1280"
+        Background="{StaticResource BackgroundBrush}">
+    <Window.InputBindings>
+        <KeyBinding Modifiers="Control+Shift" Key="A" Command="{Binding RequestAdminCommand}" />
+        <KeyBinding Key="F11" Command="{Binding ToggleFullscreenCommand}" />
+    </Window.InputBindings>
+
+    <Grid>
+        <views:IdleView Visibility="{Binding State, Converter={StaticResource StateToVisibilityConverter}, ConverterParameter=Idle}" />
+        <views:SelectBackgroundView Visibility="{Binding State, Converter={StaticResource StateToVisibilityConverter}, ConverterParameter=SelectingBackground}" />
+        <views:LiveView Visibility="{Binding State, Converter={StaticResource StateToVisibilityConverter}, ConverterParameter='Preview,Countdown'}" />
+        <views:ProcessingView Visibility="{Binding State, Converter={StaticResource StateToVisibilityConverter}, ConverterParameter='Capturing,Processing'}" />
+        <views:ResultView Visibility="{Binding State, Converter={StaticResource StateToVisibilityConverter}, ConverterParameter='Result,Printing'}" />
+        <views:AdminView Visibility="{Binding State, Converter={StaticResource StateToVisibilityConverter}, ConverterParameter=Admin}" />
+        <views:ErrorView Visibility="{Binding State, Converter={StaticResource StateToVisibilityConverter}, ConverterParameter=Error}" />
+    </Grid>
+</Window>

@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Camledian.Photobooth.AI/Camledian.Photobooth.AI.csproj" />
+    <Project Path="src/Camledian.Photobooth.App/Camledian.Photobooth.App.csproj" />
+    <Project Path="src/Camledian.Photobooth.Camera/Camledian.Photobooth.Camera.csproj" />
+    <Project Path="src/Camledian.Photobooth.Cloud/Camledian.Photobooth.Cloud.csproj" />
+    <Project Path="src/Camledian.Photobooth.Core/Camledian.Photobooth.Core.csproj" />
+    <Project Path="src/Camledian.Photobooth.Imaging/Camledian.Photobooth.Imaging.csproj" />
+    <Project Path="src/Camledian.Photobooth.Printing/Camledian.Photobooth.Printing.csproj" />
+    <Project Path="src/Camledian.Photobooth.Storage/Camledian.Photobooth.Storage.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Camledian.Photobooth.Tests/Camledian.Photobooth.Tests.csproj" />
+  </Folder>
+</Solution>

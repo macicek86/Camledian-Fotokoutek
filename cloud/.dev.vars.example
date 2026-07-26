@@ -1,0 +1,11 @@
+# Copy this file to .dev.vars for local `wrangler dev` (that file is gitignored — never commit real
+# secrets). In production these are set with `wrangler secret put <NAME>` instead.
+
+# Shared secret for the minimal dev pairing/stats admin UI (spec §31/§36/§44).
+ADMIN_API_KEY=change-me-to-a-random-string
+
+# R2 S3-compatible API token, used to create presigned photo-upload URLs (spec §34).
+# Create one at Cloudflare dashboard > R2 > Manage R2 API Tokens.
+R2_ACCOUNT_ID=your-cloudflare-account-id
+R2_ACCESS_KEY_ID=your-r2-access-key-id
+R2_SECRET_ACCESS_KEY=your-r2-secret-access-key

@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- CPU execution provider ships native binaries for win-x64/linux-x64/osx-x64 in one package,
+         so inference actually runs in this Linux devcontainer too (given a model file). Swapping in
+         Microsoft.ML.OnnxRuntime.DirectML on Windows enables GPU acceleration; see AiEngineOptions. -->
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.20.1" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.9" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Camledian.Photobooth.Core\Camledian.Photobooth.Core.csproj" />
+    <ProjectReference Include="..\Camledian.Photobooth.Imaging\Camledian.Photobooth.Imaging.csproj" />
+  </ItemGroup>
+
+</Project>

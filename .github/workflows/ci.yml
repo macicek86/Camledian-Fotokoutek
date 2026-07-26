@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  dotnet:
+    name: .NET solution (build + test)
+    # Full compilation and verification of the Windows app happens here, on a real Windows runner —
+    # local development only needs to compile the cross-platform pieces (see Directory.Build.props'
+    # EnableWindowsTargeting for how that's possible on Linux at all).
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore
+        run: dotnet restore Camledian.Photobooth.slnx
+
+      - name: Build
+        run: dotnet build Camledian.Photobooth.slnx -c Release --no-restore
+
+      - name: Test
+        run: dotnet test Camledian.Photobooth.slnx -c Release --no-build --logger "trx;LogFileName=test-results.trx"
+
+      - name: Publish test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dotnet-test-results
+          path: "**/test-results.trx"
+
+  cloud:
+    name: Cloudflare Worker (typecheck + test)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cloud
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: cloud/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run build
+
+      - name: Test
+        run: npm test

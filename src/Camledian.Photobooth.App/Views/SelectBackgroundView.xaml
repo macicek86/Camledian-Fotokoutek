@@ -1,0 +1,45 @@
+<UserControl x:Class="Camledian.Photobooth.App.Views.SelectBackgroundView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="1280" d:DesignHeight="720">
+    <Grid Background="{StaticResource BackgroundBrush}" Margin="40">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="Vyberte pozadí" Style="{StaticResource ScreenTitle}" Margin="0,0,0,24" />
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding Backgrounds}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel Orientation="Horizontal" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Button Command="{Binding DataContext.SelectBackgroundCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                CommandParameter="{Binding}"
+                                Margin="12" Padding="0" BorderThickness="0" Background="Transparent" Cursor="Hand">
+                            <StackPanel Width="280">
+                                <Border CornerRadius="12" ClipToBounds="True" BorderThickness="3" BorderBrush="{StaticResource SurfaceBrush}">
+                                    <Image Source="{Binding LocalPath, Converter={StaticResource FilePathToImageConverter}}"
+                                           Height="180" Stretch="UniformToFill" />
+                                </Border>
+                                <TextBlock Text="{Binding Name}" Foreground="{StaticResource TextBrush}"
+                                           FontSize="20" HorizontalAlignment="Center" Margin="0,8,0,0" />
+                            </StackPanel>
+                        </Button>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+        <Button Grid.Row="2" Content="ZPĚT" Style="{StaticResource KioskSecondaryButton}"
+                Command="{Binding DoneCommand}" HorizontalAlignment="Left" Margin="0,24,0,0" />
+    </Grid>
+</UserControl>
