@@ -20,7 +20,12 @@ public class PhotoboothStateMachineTests
     [InlineData(PhotoboothState.Countdown, PhotoboothState.Capturing, true)]
     [InlineData(PhotoboothState.Countdown, PhotoboothState.Preview, true)]
     [InlineData(PhotoboothState.Capturing, PhotoboothState.Processing, true)]
+    [InlineData(PhotoboothState.Capturing, PhotoboothState.SelectingPhoto, true)]
     [InlineData(PhotoboothState.Capturing, PhotoboothState.Idle, false)]
+    [InlineData(PhotoboothState.SelectingPhoto, PhotoboothState.Processing, true)]
+    [InlineData(PhotoboothState.SelectingPhoto, PhotoboothState.Preview, true)]
+    [InlineData(PhotoboothState.SelectingPhoto, PhotoboothState.Idle, true)]
+    [InlineData(PhotoboothState.SelectingPhoto, PhotoboothState.Result, false)]
     [InlineData(PhotoboothState.Processing, PhotoboothState.Result, true)]
     [InlineData(PhotoboothState.Result, PhotoboothState.Printing, true)]
     [InlineData(PhotoboothState.Result, PhotoboothState.SelectingBackground, true)]
@@ -110,5 +115,29 @@ public class PhotoboothStateMachineTests
         Assert.True(fsm.TryFire(PhotoboothState.Idle));
 
         Assert.Equal(PhotoboothState.Idle, fsm.Current);
+    }
+
+    [Fact]
+    public void BurstWorkflowWithPhotoSelectionSucceeds()
+    {
+        var fsm = new PhotoboothStateMachine();
+
+        Assert.True(fsm.TryFire(PhotoboothState.SelectingBackground));
+        Assert.True(fsm.TryFire(PhotoboothState.Preview));
+        Assert.True(fsm.TryFire(PhotoboothState.Countdown));
+        Assert.True(fsm.TryFire(PhotoboothState.Capturing));
+        Assert.True(fsm.TryFire(PhotoboothState.SelectingPhoto));
+        Assert.True(fsm.TryFire(PhotoboothState.Processing));
+        Assert.True(fsm.TryFire(PhotoboothState.Result));
+
+        Assert.Equal(PhotoboothState.Result, fsm.Current);
+    }
+
+    [Fact]
+    public void BurstRetakeFromSelectionGoesBackToPreview()
+    {
+        var fsm = new PhotoboothStateMachine(PhotoboothState.SelectingPhoto);
+        Assert.True(fsm.TryFire(PhotoboothState.Preview));
+        Assert.True(fsm.TryFire(PhotoboothState.Countdown));
     }
 }

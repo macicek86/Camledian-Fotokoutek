@@ -15,8 +15,9 @@
     <Grid>
         <views:IdleView Visibility="{Binding State, Converter={StaticResource StateToVisibilityConverter}, ConverterParameter=Idle}" />
         <views:SelectBackgroundView Visibility="{Binding State, Converter={StaticResource StateToVisibilityConverter}, ConverterParameter=SelectingBackground}" />
-        <views:LiveView Visibility="{Binding State, Converter={StaticResource StateToVisibilityConverter}, ConverterParameter='Preview,Countdown'}" />
-        <views:ProcessingView Visibility="{Binding State, Converter={StaticResource StateToVisibilityConverter}, ConverterParameter='Capturing,Processing'}" />
+        <views:LiveView Visibility="{Binding State, Converter={StaticResource StateToVisibilityConverter}, ConverterParameter='Preview,Countdown,Capturing'}" />
+        <views:SelectPhotoView Visibility="{Binding State, Converter={StaticResource StateToVisibilityConverter}, ConverterParameter=SelectingPhoto}" />
+        <views:ProcessingView Visibility="{Binding State, Converter={StaticResource StateToVisibilityConverter}, ConverterParameter=Processing}" />
         <views:ResultView Visibility="{Binding State, Converter={StaticResource StateToVisibilityConverter}, ConverterParameter='Result,Printing'}" />
         <views:AdminView Visibility="{Binding State, Converter={StaticResource StateToVisibilityConverter}, ConverterParameter=Admin}" />
         <views:ErrorView Visibility="{Binding State, Converter={StaticResource StateToVisibilityConverter}, ConverterParameter=Error}" />

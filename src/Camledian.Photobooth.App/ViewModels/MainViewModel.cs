@@ -15,6 +15,7 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
 
 namespace Camledian.Photobooth.App.ViewModels;
 
@@ -49,6 +50,8 @@ public partial class MainViewModel : ObservableObject
     private CancellationTokenSource? _countdownCts;
     private CancellationTokenSource? _resultTimeoutCts;
     private CancellationTokenSource? _syncPollCts;
+    private CancellationTokenSource? _selectPhotoTimeoutCts;
+    private IReadOnlyList<CameraFrame>? _burstFrames;
 
     [ObservableProperty]
     private PhotoboothState _state = PhotoboothState.Idle;
@@ -97,6 +100,14 @@ public partial class MainViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _isPairing;
+
+    [ObservableProperty]
+    private int _burstShotIndex;
+
+    [ObservableProperty]
+    private int _burstShotTotal;
+
+    public ObservableCollection<BurstShotItem> BurstShots { get; } = [];
 
     public ObservableCollection<AssetRecord> Backgrounds { get; } = [];
 
@@ -296,13 +307,80 @@ public partial class MainViewModel : ObservableObject
             return;
         }
 
-        _fsm.TryFire(PhotoboothState.Processing);
+        var burstCount = Math.Clamp(_settingsService.Current.Ui.BurstCount, 1, 9);
+        var burstInterval = TimeSpan.FromMilliseconds(Math.Clamp(_settingsService.Current.Ui.BurstIntervalMs, 200, 10_000));
+        BurstShotTotal = burstCount;
+        BurstShotIndex = 0;
 
+        try
+        {
+            // Scalar ObservableProperty updates are safe from the capture thread (WPF marshals
+            // PropertyChanged for non-collection properties automatically).
+            _burstFrames = await _capture.CaptureBurstAsync(burstCount, burstInterval, i => BurstShotIndex = i)
+                .ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Burst capture failed.");
+            ErrorMessage = "Fotografování selhalo: " + ex.Message;
+            _fsm.TryFire(PhotoboothState.Error);
+            return;
+        }
+
+        if (burstCount == 1)
+        {
+            _fsm.TryFire(PhotoboothState.Processing);
+            await ProcessSelectedFrameAsync(_burstFrames[0]).ConfigureAwait(true);
+            return;
+        }
+
+        BurstShots.Clear();
+        for (var i = 0; i < _burstFrames.Count; i++)
+        {
+            using var thumbnail = _burstFrames[i].Image.Clone(ctx => ctx.Resize(480, 0));
+            BurstShots.Add(new BurstShotItem(i, ImageSharpWpfInterop.ToBitmapSource(thumbnail)));
+        }
+
+        _fsm.TryFire(PhotoboothState.SelectingPhoto);
+        StartSelectPhotoTimeout();
+    }
+
+    /// <summary>The guest tapped one of the burst shots — process just that one; the rest of the
+    /// burst is discarded when the selection flow ends (ProcessSelectedFrameAsync's finally).</summary>
+    [RelayCommand]
+    private async Task SelectBurstShotAsync(BurstShotItem shot)
+    {
+        _selectPhotoTimeoutCts?.Cancel();
+        if (!_fsm.TryFire(PhotoboothState.Processing))
+        {
+            return;
+        }
+
+        if (_burstFrames is null || shot.Index >= _burstFrames.Count)
+        {
+            _fsm.TryFire(PhotoboothState.Error);
+            return;
+        }
+
+        await ProcessSelectedFrameAsync(_burstFrames[shot.Index]).ConfigureAwait(true);
+    }
+
+    /// <summary>Retake from the selection screen: throw the whole burst away and go back to preview.</summary>
+    [RelayCommand]
+    private void RetakeBurst()
+    {
+        _selectPhotoTimeoutCts?.Cancel();
+        DisposeBurstFrames();
+        _fsm.TryFire(PhotoboothState.Preview);
+    }
+
+    private async Task ProcessSelectedFrameAsync(CameraFrame still)
+    {
         Image<Rgba32>? blankBackground = null;
         try
         {
             var background = _preview.SelectedBackground ?? (blankBackground = new Image<Rgba32>(_preview.Template.WidthPx, _preview.Template.HeightPx));
-            var record = await _capture.CaptureAsync(_activeEvent!.Id, background, _preview.SelectedOverlay, _preview.Template)
+            var record = await _capture.ProcessCapturedAsync(_activeEvent!.Id, still, background, _preview.SelectedOverlay, _preview.Template)
                 .ConfigureAwait(true);
 
             ResultRecord = record;
@@ -327,14 +405,60 @@ public partial class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Capture failed.");
+            _logger.LogError(ex, "Capture processing failed.");
             ErrorMessage = "Fotografování selhalo: " + ex.Message;
             _fsm.TryFire(PhotoboothState.Error);
         }
         finally
         {
             blankBackground?.Dispose();
+            DisposeBurstFrames();
         }
+    }
+
+    private void DisposeBurstFrames()
+    {
+        if (_burstFrames is not null)
+        {
+            foreach (var frame in _burstFrames)
+            {
+                frame.Dispose();
+            }
+
+            _burstFrames = null;
+        }
+
+        BurstShots.Clear();
+    }
+
+    /// <summary>If nobody picks a shot (guest walked away mid-flow), discard the burst and reset —
+    /// deliberately saving/printing nothing, so AutoPrint can't waste paper on an abandoned session.</summary>
+    private void StartSelectPhotoTimeout()
+    {
+        _selectPhotoTimeoutCts?.Cancel();
+        var cts = new CancellationTokenSource();
+        _selectPhotoTimeoutCts = cts;
+        var timeout = TimeSpan.FromSeconds(Math.Max(10, _settingsService.Current.Ui.ResultScreenTimeoutSeconds));
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(timeout, cts.Token).ConfigureAwait(false);
+                await _dispatcher.InvokeAsync(() =>
+                {
+                    if (State == PhotoboothState.SelectingPhoto)
+                    {
+                        DisposeBurstFrames();
+                        GoIdle();
+                    }
+                });
+            }
+            catch (OperationCanceledException)
+            {
+                // user picked a shot before the timeout — nothing to do
+            }
+        });
     }
 
     private void StartResultTimeout()
@@ -442,6 +566,7 @@ public partial class MainViewModel : ObservableObject
 
     private void GoIdle()
     {
+        DisposeBurstFrames();
         SelectedBackground = null;
         ResultImage = null;
         ResultRecord = null;

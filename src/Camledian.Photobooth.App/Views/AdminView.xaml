@@ -67,6 +67,14 @@
                         <Label Content="Admin PIN" />
                         <TextBox Text="{Binding Settings.Ui.AdminPin}" />
 
+                        <TextBlock Text="Série snímků" Style="{StaticResource SectionTitle}" FontSize="18" />
+                        <Label Content="{Binding Settings.Ui.BurstCount, StringFormat='Počet snímků za sebou (1 = bez výběru): {0}'}" />
+                        <Slider Minimum="1" Maximum="6" TickFrequency="1" IsSnapToTickEnabled="True" Value="{Binding Settings.Ui.BurstCount}" />
+                        <Label Content="{Binding Settings.Ui.BurstIntervalMs, StringFormat='Pauza mezi snímky (ms): {0}'}" />
+                        <Slider Minimum="500" Maximum="5000" TickFrequency="100" IsSnapToTickEnabled="True" Value="{Binding Settings.Ui.BurstIntervalMs}" />
+                        <Label Content="Text výzvy při focení" />
+                        <TextBox Text="{Binding Settings.Ui.SmilePromptText}" />
+
                         <TextBlock Text="Fyzická spoušť" Style="{StaticResource SectionTitle}" FontSize="18" />
                         <TextBlock TextWrapping="Wrap" Foreground="{StaticResource MutedTextBrush}" Margin="0,0,0,12">
                             Většina bezdrátových/USB spouští (Bluetooth tlačítko, nožní spínač, prezentační klikátko)

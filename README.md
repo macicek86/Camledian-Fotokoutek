@@ -92,6 +92,14 @@ This only works on Windows (it launches the actual WPF process). On first run it
 Admin screen: **Ctrl+Shift+A**, PIN default `1234` (change it in Admin → Obecné). Tabs: Obecné,
 Kamera, Green Screen, Odečítání pozadí, AI / Hybrid, Tisk, Cloud, Diagnostika.
 
+**Burst capture with photo selection** (spec §57 "více fotografií"): by default each shoot takes
+**3 shots** with a 1.5s pause (both configurable in Admin → Obecné, set count to 1 for the classic
+single shot), showing a "Úsměv! 😊" prompt + shot counter over the live preview while shooting. The
+guest then picks their favorite on a selection screen; only that one goes through processing,
+saving, QR and printing — the rest of the burst is discarded. If nobody picks within the timeout,
+the whole burst is discarded and the kiosk resets (nothing is saved or auto-printed for an
+abandoned session).
+
 **Physical shutter trigger** (spec §57): Admin → Obecné → "Naučit se tlačítko", then press the
 remote/footswitch/clicker once — the app just remembers whichever key it happened to send (default
 `Space`). Works with the overwhelming majority of photobooth remotes (Bluetooth shutter buttons, USB
