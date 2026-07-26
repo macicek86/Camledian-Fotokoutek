@@ -99,11 +99,15 @@ footswitches, presentation clickers), since virtually all of them emulate a keyb
 device-specific driver needed. Only acts while on the Idle or Preview screen, so it can never eat a
 keystroke meant for an Admin text field.
 
-**Branding (logo + text banner)**: Admin → Logo / Text — stamps a corner logo (transparent PNG
-recommended) and/or a centered text banner (e.g. event name + date, incl. diacritics) onto the
-**final** photo, on top of everything else. No need to produce a full-canvas overlay PNG for simple
-cases; full-canvas overlays in `assets/overlays` still work alongside it. A broken logo path or a
-missing system font just skips that element — it never fails the capture.
+**Branding (logo + text banner)**: Admin → Logo / Text — stamps a logo (transparent PNG
+recommended) and/or a text banner (e.g. event name + date, incl. diacritics) onto the **final**
+photo, on top of everything else. Banner comes in four pre-made styles — `Bar` (full-width strip),
+`Pill` (rounded capsule around the text), `Ribbon` (strip with thin gold accent lines) and `Minimal`
+(shadowed text, no background) — with left/center/right alignment and top/bottom or free (%)
+vertical placement; the logo snaps to any corner or a free X/Y (%) position. No need to produce a
+full-canvas overlay PNG for simple cases; full-canvas overlays in `assets/overlays` still work
+alongside it. A broken logo path or a missing system font just skips that element — it never fails
+the capture.
 
 ## Run Cloudflare backend
 
