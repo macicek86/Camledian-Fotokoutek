@@ -33,7 +33,7 @@
         </Grid>
 
         <!-- Preview controls: only shown before the countdown starts -->
-        <Grid VerticalAlignment="Bottom" Margin="0,0,0,48"
+        <Grid VerticalAlignment="Bottom" Margin="0,0,0,88"
               Visibility="{Binding State, Converter={StaticResource StateToVisibilityConverter}, ConverterParameter=Preview}">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                 <Button Content="ZPĚT" Style="{StaticResource KioskSecondaryButton}"
