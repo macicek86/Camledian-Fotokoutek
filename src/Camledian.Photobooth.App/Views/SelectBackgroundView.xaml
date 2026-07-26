@@ -13,6 +13,12 @@
 
         <TextBlock Grid.Row="0" Text="Vyberte pozadí" Style="{StaticResource ScreenTitle}" Margin="0,0,0,24" />
 
+        <!-- Brand watermark: top-right here specifically, since ZPĚT sits bottom-left on this screen -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Opacity="0.6" IsHitTestVisible="False">
+            <Image Source="{Binding LogoEmblemPath, Converter={StaticResource FilePathToImageConverter}, ConverterParameter=80}" Height="28" Stretch="Uniform" Margin="0,0,8,0" />
+            <TextBlock Text="CAMLEDIAN FOTOKOUTEK" FontSize="13" FontWeight="Bold" Foreground="{StaticResource MutedTextBrush}" VerticalAlignment="Center" />
+        </StackPanel>
+
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
             <ItemsControl ItemsSource="{Binding Backgrounds}">
                 <ItemsControl.ItemsPanel>

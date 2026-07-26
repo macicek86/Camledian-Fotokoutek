@@ -47,5 +47,11 @@
                 HorizontalAlignment="Right" VerticalAlignment="Top" Margin="24"
                 Command="{Binding CancelCountdownCommand}"
                 Visibility="{Binding State, Converter={StaticResource StateToVisibilityConverter}, ConverterParameter=Countdown}" />
+
+        <!-- Brand watermark: bottom-left is clear in every LiveView state (controls sit bottom-center/top-center/top-right) -->
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="24" Opacity="0.6" IsHitTestVisible="False">
+            <Image Source="{Binding LogoEmblemPath, Converter={StaticResource FilePathToImageConverter}, ConverterParameter=80}" Height="28" Stretch="Uniform" Margin="0,0,8,0" />
+            <TextBlock Text="CAMLEDIAN FOTOKOUTEK" FontSize="13" FontWeight="Bold" Foreground="{StaticResource MutedTextBrush}" VerticalAlignment="Center" />
+        </StackPanel>
     </Grid>
 </UserControl>

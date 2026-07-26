@@ -9,5 +9,10 @@
             <TextBlock Text="Zpracovávám fotografii..." Style="{StaticResource ScreenTitle}" FontSize="40" HorizontalAlignment="Center" />
             <ProgressBar IsIndeterminate="True" Width="360" Height="10" Margin="0,32,0,0" />
         </StackPanel>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="24" Opacity="0.6" IsHitTestVisible="False">
+            <Image Source="{Binding LogoEmblemPath, Converter={StaticResource FilePathToImageConverter}, ConverterParameter=80}" Height="28" Stretch="Uniform" Margin="0,0,8,0" />
+            <TextBlock Text="CAMLEDIAN FOTOKOUTEK" FontSize="13" FontWeight="Bold" Foreground="{StaticResource MutedTextBrush}" VerticalAlignment="Center" />
+        </StackPanel>
     </Grid>
 </UserControl>

@@ -14,6 +14,16 @@
             <Image Source="{Binding ResultImage}" Stretch="Uniform" />
         </Border>
 
+        <!-- Brand watermark over the photo's bottom-left corner, inset enough to clear the Border's CornerRadius -->
+        <StackPanel Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="28" Opacity="0.6" IsHitTestVisible="False">
+            <Image Source="{Binding LogoEmblemPath, Converter={StaticResource FilePathToImageConverter}, ConverterParameter=80}" Height="28" Stretch="Uniform" Margin="0,0,8,0" />
+            <TextBlock Text="CAMLEDIAN FOTOKOUTEK" FontSize="13" FontWeight="Bold" Foreground="White" VerticalAlignment="Center">
+                <TextBlock.Effect>
+                    <DropShadowEffect BlurRadius="8" ShadowDepth="0" Color="Black" Opacity="0.9" />
+                </TextBlock.Effect>
+            </TextBlock>
+        </StackPanel>
+
         <StackPanel Grid.Column="1" Margin="40,0,0,0" VerticalAlignment="Center">
             <TextBlock Text="Hotovo!" Style="{StaticResource ScreenTitle}" Margin="0,0,0,24" />
 

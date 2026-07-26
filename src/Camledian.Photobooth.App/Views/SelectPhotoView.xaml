@@ -43,5 +43,11 @@
 
         <Button Grid.Row="2" Content="ZNOVU VYFOTIT" Style="{StaticResource KioskSecondaryButton}"
                 Command="{Binding RetakeBurstCommand}" HorizontalAlignment="Center" Margin="0,24,0,0" />
+
+        <!-- Brand watermark: spans all rows so Bottom alignment resolves against the whole screen, not just Row 0 -->
+        <StackPanel Grid.Row="0" Grid.RowSpan="3" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Bottom" Opacity="0.6" IsHitTestVisible="False">
+            <Image Source="{Binding LogoEmblemPath, Converter={StaticResource FilePathToImageConverter}, ConverterParameter=80}" Height="28" Stretch="Uniform" Margin="0,0,8,0" />
+            <TextBlock Text="CAMLEDIAN FOTOKOUTEK" FontSize="13" FontWeight="Bold" Foreground="{StaticResource MutedTextBrush}" VerticalAlignment="Center" />
+        </StackPanel>
     </Grid>
 </UserControl>
