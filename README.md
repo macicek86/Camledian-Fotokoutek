@@ -24,6 +24,8 @@ tests/
 cloud/                            Cloudflare Worker backend (TypeScript, D1, R2)
 assets/
   backgrounds/, overlays/          Bundled demo backgrounds/overlay, also copied next to the built app
+  branding/logo-full.png           Kiosk UI brand logo (Idle screen + Admin header) — not the same as
+                                    the per-photo Branding.LogoPath, which stamps a logo onto the photo
 scripts/                          setup / build / test / run / download-models / dev-cloud (PowerShell)
 .github/workflows/ci.yml          .NET CI: Windows build+test — manual run, or a v* release tag
 .github/workflows/cloud.yml       Cloud CI: Worker typecheck+test — manual run only

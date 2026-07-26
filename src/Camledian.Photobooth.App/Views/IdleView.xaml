@@ -6,8 +6,9 @@
              mc:Ignorable="d" d:DesignWidth="1280" d:DesignHeight="720">
     <Grid Background="{StaticResource BackgroundBrush}">
         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-            <TextBlock Text="Camledian Photobooth" Style="{StaticResource ScreenTitle}" FontSize="64" HorizontalAlignment="Center" />
-            <TextBlock Text="Dotkněte se obrazovky a začněte" Style="{StaticResource ScreenSubtitle}" HorizontalAlignment="Center" Margin="0,16,0,48" />
+            <Image Source="{Binding LogoFullPath, Converter={StaticResource FilePathToImageConverter}, ConverterParameter=600}"
+                   Width="360" Stretch="Uniform" HorizontalAlignment="Center" Margin="0,0,0,24" />
+            <TextBlock Text="Dotkněte se obrazovky a začněte" Style="{StaticResource ScreenSubtitle}" HorizontalAlignment="Center" Margin="0,0,0,48" />
             <Button Content="ZAČÍT" Style="{StaticResource KioskButton}" Command="{Binding StartSessionCommand}"
                     HorizontalAlignment="Center" FontSize="40" Padding="64,32" />
         </StackPanel>

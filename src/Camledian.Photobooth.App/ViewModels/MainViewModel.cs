@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Camledian.Photobooth.App.Services;
@@ -113,6 +114,11 @@ public partial class MainViewModel : ObservableObject
     public ObservableCollection<AssetRecord> Backgrounds { get; } = [];
 
     public AppSettings Settings => _settingsService.Current;
+
+    /// <summary>Bundled brand logo (transparent PNG), shown on the Idle screen and the Admin header —
+    /// separate from the user-configurable Branding.LogoPath, which stamps a logo onto the photo
+    /// itself rather than the kiosk UI.</summary>
+    public string LogoFullPath { get; } = Path.Combine(AppContext.BaseDirectory, "assets", "branding", "logo-full.png");
 
     public IReadOnlyList<CameraDeviceInfo> AvailableCameras { get; private set; } = [];
 

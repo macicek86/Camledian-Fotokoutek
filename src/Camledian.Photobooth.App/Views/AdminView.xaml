@@ -51,7 +51,9 @@
             </Grid.RowDefinitions>
 
             <DockPanel Grid.Row="0" LastChildFill="False" Margin="0,0,0,16">
-                <TextBlock Text="Nastavení" Style="{StaticResource ScreenTitle}" FontSize="32" DockPanel.Dock="Left" />
+                <Image Source="{Binding LogoFullPath, Converter={StaticResource FilePathToImageConverter}, ConverterParameter=200}"
+                       Height="40" Stretch="Uniform" DockPanel.Dock="Left" Margin="0,0,16,0" VerticalAlignment="Center" />
+                <TextBlock Text="Nastavení" Style="{StaticResource ScreenTitle}" FontSize="32" DockPanel.Dock="Left" VerticalAlignment="Center" />
                 <Button Content="ULOŽIT A ZAVŘÍT" Style="{StaticResource KioskSecondaryButton}" DockPanel.Dock="Right"
                         Command="{Binding CloseAdminCommand}" />
             </DockPanel>
