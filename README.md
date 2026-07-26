@@ -92,6 +92,13 @@ This only works on Windows (it launches the actual WPF process). On first run it
 Admin screen: **Ctrl+Shift+A**, PIN default `1234` (change it in Admin → Obecné). Tabs: Obecné,
 Kamera, Green Screen, Odečítání pozadí, AI / Hybrid, Tisk, Cloud, Diagnostika.
 
+**Physical shutter trigger** (spec §57): Admin → Obecné → "Naučit se tlačítko", then press the
+remote/footswitch/clicker once — the app just remembers whichever key it happened to send (default
+`Space`). Works with the overwhelming majority of photobooth remotes (Bluetooth shutter buttons, USB
+footswitches, presentation clickers), since virtually all of them emulate a keyboard keypress; no
+device-specific driver needed. Only acts while on the Idle or Preview screen, so it can never eat a
+keystroke meant for an Admin text field.
+
 ## Run Cloudflare backend
 
 ```

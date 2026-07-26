@@ -66,6 +66,23 @@
                         <TextBox Text="{Binding Settings.Ui.ResultScreenTimeoutSeconds}" />
                         <Label Content="Admin PIN" />
                         <TextBox Text="{Binding Settings.Ui.AdminPin}" />
+
+                        <TextBlock Text="Fyzická spoušť" Style="{StaticResource SectionTitle}" FontSize="18" />
+                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource MutedTextBrush}" Margin="0,0,0,12">
+                            Většina bezdrátových/USB spouští (Bluetooth tlačítko, nožní spínač, prezentační klikátko)
+                            se chová jako klávesnice — stačí zmáčknout tlačítko na spoušti a systém si zapamatuje,
+                            jakou klávesu posílá.
+                        </TextBlock>
+                        <TextBlock Text="{Binding Settings.Ui.PhotoTriggerKey, StringFormat='Aktuální klávesa: {0}', FallbackValue='Aktuální klávesa: (vypnuto)'}"
+                                   Foreground="{StaticResource TextBrush}" Margin="0,0,0,8" />
+                        <TextBlock Text="Stiskněte tlačítko na spoušti (nebo klávesu)..." Foreground="{StaticResource AccentBrush}" FontWeight="Bold"
+                                   Margin="0,0,0,8" Visibility="{Binding IsLearningTriggerKey, Converter={StaticResource BoolToVisibilityConverter}}" />
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="NAUČIT SE TLAČÍTKO" Style="{StaticResource KioskSecondaryButton}" FontSize="16"
+                                    Command="{Binding BeginLearnTriggerKeyCommand}" Margin="0,0,8,0" />
+                            <Button Content="Vypnout spoušť" Style="{StaticResource KioskSecondaryButton}" FontSize="16"
+                                    Command="{Binding ClearTriggerKeyCommand}" />
+                        </StackPanel>
                     </StackPanel>
                 </TabItem>
 
