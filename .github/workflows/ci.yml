@@ -38,6 +38,24 @@ jobs:
           name: dotnet-test-results
           path: "**/test-results.trx"
 
+      # Self-contained, single-file .exe — no separate .NET runtime install needed on the kiosk PC.
+      # Native libraries (OpenCvSharp, ONNX Runtime, SQLite) that can't live inside the single file
+      # are extracted next to it at first run, via IncludeNativeLibrariesForSelfExtract.
+      - name: Publish Windows app (self-contained exe)
+        run: >
+          dotnet publish src/Camledian.Photobooth.App/Camledian.Photobooth.App.csproj
+          -c Release -r win-x64 --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:DebugType=None
+          -o publish/CamledianPhotobooth
+
+      - name: Upload app artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CamledianPhotobooth-windows-x64
+          path: publish/CamledianPhotobooth/**
+
   cloud:
     name: Cloudflare Worker (typecheck + test)
     runs-on: ubuntu-latest
