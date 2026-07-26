@@ -3,6 +3,9 @@
  * just "who we are / what this photobooth offers" for visitors who land on the bare domain).
  * Pricing is a placeholder — edit CENIK below once real packages are decided. Logo/favicon files
  * live in cloud/public/ (served directly by the Workers static-assets binding, see wrangler.toml).
+ *
+ * Light theme by design: the logo's navy/gold artwork was made for a light background, so the page
+ * uses one instead of trying to carve out a light patch behind it on a dark page.
  */
 export function landingPage(): Response {
   const html = `<!doctype html>
@@ -16,54 +19,56 @@ export function landingPage(): Response {
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <style>
   :root {
-    color-scheme: dark;
+    color-scheme: light;
+    --bg: #f7f2e7;
+    --panel: #ffffff;
+    --border: #e6ddc6;
     --navy: #0d1b2e;
-    --navy-panel: #16283f;
-    --navy-border: #223650;
-    --gold: #d4af37;
-    --gold-dark: #b8912a;
-    --text-muted: #9fb0c3;
+    --gold: #b8912a;
+    --gold-bright: #d4af37;
+    --text-muted: #5b6472;
   }
   * { box-sizing: border-box; }
   body {
-    margin: 0; background: var(--navy); color: #f5f5f5;
+    margin: 0; background: var(--bg); color: var(--navy);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     line-height: 1.5;
   }
   header {
     padding: 64px 24px 56px; text-align: center;
-    background: radial-gradient(circle at 50% 0%, var(--navy-panel) 0%, var(--navy) 72%);
+    background: radial-gradient(circle at 50% 0%, #fffdf6 0%, var(--bg) 75%);
+    border-bottom: 1px solid var(--border);
   }
-  .badge-card {
-    display: inline-block; background: #f4efe3; padding: 20px 28px; border-radius: 28px;
-    box-shadow: 0 12px 32px rgba(0,0,0,0.35); margin-bottom: 24px;
+  header img.badge { display: block; margin: 0 auto; width: 260px; max-width: 65vw; height: auto; }
+  header h1 {
+    font-size: clamp(2rem, 5vw, 3.2rem); margin: 24px 0 16px; color: var(--navy); letter-spacing: 0.02em;
   }
-  header img.badge { display: block; width: 240px; max-width: 60vw; height: auto; }
-  header h1 { font-size: clamp(2rem, 5vw, 3.2rem); margin: 0 0 16px; color: var(--gold); letter-spacing: 0.02em; }
   header p { color: var(--text-muted); font-size: 1.2rem; max-width: 560px; margin: 0 auto; }
   main { max-width: 960px; margin: 0 auto; padding: 0 24px 96px; }
   section { margin-top: 64px; }
-  h2 { font-size: 1.6rem; border-left: 4px solid var(--gold); padding-left: 16px; }
+  h2 { font-size: 1.6rem; border-left: 4px solid var(--gold); padding-left: 16px; color: var(--navy); }
   .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-top: 24px; }
-  .card { background: var(--navy-panel); border: 1px solid var(--navy-border); border-radius: 16px; padding: 24px; }
+  .card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 24px;
+    box-shadow: 0 4px 16px rgba(13,27,46,0.06);
+  }
   .card h3 { margin-top: 0; color: var(--gold); }
-  table.pricing { width: 100%; border-collapse: collapse; margin-top: 24px; }
-  table.pricing th, table.pricing td { padding: 14px 16px; border-bottom: 1px solid var(--navy-border); text-align: left; }
+  table.pricing { width: 100%; border-collapse: collapse; margin-top: 24px; background: var(--panel); border-radius: 12px; overflow: hidden; }
+  table.pricing th, table.pricing td { padding: 14px 16px; border-bottom: 1px solid var(--border); text-align: left; }
   table.pricing th { color: var(--text-muted); font-weight: 600; }
   .price { color: var(--gold); font-weight: 700; font-size: 1.1rem; }
-  footer { text-align: center; padding: 32px 24px; color: #6b7280; font-size: 0.9rem; }
+  footer { text-align: center; padding: 32px 24px; color: var(--text-muted); font-size: 0.9rem; }
   a.cta {
-    display: inline-block; margin-top: 32px; background: var(--gold); color: var(--navy); text-decoration: none;
+    display: inline-block; margin-top: 32px; background: var(--navy); color: #fff; text-decoration: none;
     font-weight: 700; padding: 16px 36px; border-radius: 12px;
   }
-  a.cta:hover { background: var(--gold-dark); }
+  a.cta:hover { background: #16283f; }
+  footer a { color: var(--text-muted); }
 </style>
 </head>
 <body>
   <header>
-    <div class="badge-card">
-      <img class="badge" src="/logo-full.png" alt="Camledian Fotokoutek">
-    </div>
+    <img class="badge" src="/logo-full.png" alt="Camledian Fotokoutek">
     <h1>Camledian Fotokoutek</h1>
     <p>Moderní fotokoutek se zeleným plátnem, AI úpravou pozadí a okamžitým sdílením fotek přes QR kód —
        na svatby, firemní akce i oslavy.</p>
@@ -92,7 +97,7 @@ export function landingPage(): Response {
       </table>
     </section>
   </main>
-  <footer>Camledian Fotokoutek &middot; <a href="mailto:info@camledian.art" style="color: var(--text-muted)">info@camledian.art</a></footer>
+  <footer>Camledian Fotokoutek &middot; <a href="mailto:info@camledian.art">info@camledian.art</a></footer>
 </body>
 </html>`;
 
