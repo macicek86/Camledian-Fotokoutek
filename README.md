@@ -15,7 +15,8 @@ src/
   Camledian.Photobooth.Camera     ICameraProvider: WebcamCameraProvider (OpenCvSharp) + MockCameraProvider
   Camledian.Photobooth.AI         ONNX background removal (AI) + Hybrid (chroma + AI combined)
   Camledian.Photobooth.Storage    SQLite (Microsoft.Data.Sqlite), migrations, repositories, photo file layout
-  Camledian.Photobooth.Printing   Windows printing (System.Drawing.Printing)
+  Camledian.Photobooth.Printing   Print interfaces + ESC/POS receipt payload builder (net10.0, cross-platform)
+  Camledian.Photobooth.Printing.Windows  Windows printing (System.Drawing.Printing) + serial (COM/Bluetooth) receipt printer transport
   Camledian.Photobooth.Cloud      Cloudflare API client, device pairing, sync queue worker, QR generation
   Camledian.Photobooth.App        WPF app (net10.0-windows) — the actual kiosk UI
 tests/
@@ -90,7 +91,7 @@ This only works on Windows (it launches the actual WPF process). On first run it
   still exercisable without hardware.
 
 Admin screen: **Ctrl+Shift+A**, PIN default `1234` (change it in Admin → Obecné). Tabs: Obecné,
-Kamera, Green Screen, Odečítání pozadí, AI / Hybrid, Tisk, Cloud, Diagnostika.
+Kamera, Green Screen, Odečítání pozadí, AI / Hybrid, Logo / Text, Tisk, Účtenka, Cloud, Diagnostika.
 
 **Burst capture with photo selection** (spec §57 "více fotografií"): by default each shoot takes
 **3 shots** with a 1.5s pause (both configurable in Admin → Obecné, set count to 1 for the classic
@@ -116,6 +117,23 @@ vertical placement; the logo snaps to any corner or a free X/Y (%) position. No 
 full-canvas overlay PNG for simple cases; full-canvas overlays in `assets/overlays` still work
 alongside it. A broken logo path or a missing system font just skips that element — it never fails
 the capture.
+
+**Receipt printer (Bluetooth/USB POS, 58mm/80mm thermal)**: Admin → Účtenka — once a guest's photo
+finishes uploading and its QR download link is ready, the app can print that same QR code plus a
+header/footer text (e.g. "Vaše fotografie" / "Naskenujte QR kód mobilem") on a thermal receipt
+printer, so the guest walks away with a paper slip instead of having to scan the on-screen QR before
+leaving. A paired Bluetooth POS printer shows up on Windows as a virtual COM (serial) port — pick it
+from the port dropdown, no vendor SDK or driver needed. The payload is plain ESC/POS: the QR is sent
+as a raster bitmap (`GS v 0`), not the printer's native 2D-barcode command, so it works even on
+printers whose firmware doesn't support QR codes directly; header/footer text is transliterated to
+plain ASCII (`Vaše` → `Vase`) since these printers use codepage 437, which has no Czech diacritics.
+Paper width is a dot count — 384 for 58mm, 576 for 80mm. "Automaticky vytisknout" prints it the
+moment the QR appears on the Result screen; a "VYTISKNOUT ÚČTENKU" button there also allows a manual
+reprint. Like the photo print path, a failed receipt print only shows an error — it never touches the
+already-saved photo or blocks the next session. `Camledian.Photobooth.Printing` (portable) builds the
+ESC/POS payload as a pure, unit-tested function; the actual serial transport lives in
+`Camledian.Photobooth.Printing.Windows` alongside `WindowsPrintingService`, for the same
+compile-anywhere/run-on-Windows split as the rest of the solution.
 
 ## Run Cloudflare backend
 
@@ -194,8 +212,8 @@ trade away the cross-platform testability described above).
 ## Why the WPF app builds on non-Windows
 
 `Directory.Build.props` sets `EnableWindowsTargeting=true` for the whole solution. This lets `dotnet
-build` fully compile (including XAML) `net10.0-windows` projects — the WPF app, the printing
-project — on Linux/macOS too. It does **not** let you *run* them there (no Windows Desktop runtime,
+build` fully compile (including XAML) `net10.0-windows` projects — the WPF app,
+`Camledian.Photobooth.Printing.Windows` — on Linux/macOS too. It does **not** let you *run* them there (no Windows Desktop runtime,
 no real window, no camera/printer APIs) — that verification step is what the `windows-latest` GitHub
 Actions job is for. This is also why local development in a non-Windows devcontainer is limited to
 building/testing, per the project's own instructions to keep the container itself as light as

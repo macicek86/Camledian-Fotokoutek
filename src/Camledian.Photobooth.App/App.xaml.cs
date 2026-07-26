@@ -125,6 +125,7 @@ public partial class App : Application
 
         // Printing
         services.AddSingleton<IPrintingService, WindowsPrintingService>();
+        services.AddSingleton<IReceiptPrinterService, SerialReceiptPrinterService>();
 
         // Cloud (spec §35/§36/§37/§38/§40): base URL is read once at startup — changing it in Admin
         // takes effect after a restart, same as changing the camera device.

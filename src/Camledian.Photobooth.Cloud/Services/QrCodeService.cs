@@ -14,4 +14,25 @@ public static class QrCodeService
         var pngQrCode = new PngByteQRCode(data);
         return pngQrCode.GetGraphic(pixelsPerModule);
     }
+
+    /// <summary>Raw module matrix (true = dark), for renderers that draw the QR themselves — e.g.
+    /// the ESC/POS raster sent to the thermal receipt printer.</summary>
+    public static bool[,] GenerateModules(string content)
+    {
+        using var generator = new QRCodeGenerator();
+        using var data = generator.CreateQrCode(content, QRCodeGenerator.ECCLevel.Q);
+
+        var size = data.ModuleMatrix.Count;
+        var modules = new bool[size, size];
+        for (var y = 0; y < size; y++)
+        {
+            var row = data.ModuleMatrix[y];
+            for (var x = 0; x < size; x++)
+            {
+                modules[y, x] = row[x];
+            }
+        }
+
+        return modules;
+    }
 }

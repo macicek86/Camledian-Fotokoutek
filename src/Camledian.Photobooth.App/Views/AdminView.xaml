@@ -247,6 +247,24 @@
                     </StackPanel>
                 </TabItem>
 
+                <TabItem Header="Účtenka">
+                    <StackPanel Margin="16" MaxWidth="480" HorizontalAlignment="Left">
+                        <CheckBox Content="Povolit tisk účtenky (BT/POS tiskárna)" IsChecked="{Binding Settings.ReceiptPrinter.Enabled}" Margin="0,0,0,12" />
+                        <Label Content="COM port" />
+                        <ComboBox ItemsSource="{Binding AvailableReceiptPorts}"
+                                  SelectedItem="{Binding Settings.ReceiptPrinter.PortName}" Margin="0,0,0,12" IsEditable="True" />
+                        <Label Content="Rychlost (baud)" />
+                        <TextBox Text="{Binding Settings.ReceiptPrinter.BaudRate}" Margin="0,0,0,12" />
+                        <Label Content="Šířka papíru (body — 384 = 58mm, 576 = 80mm)" />
+                        <TextBox Text="{Binding Settings.ReceiptPrinter.PaperWidthDots}" Margin="0,0,0,12" />
+                        <Label Content="Text nahoře" />
+                        <TextBox Text="{Binding Settings.ReceiptPrinter.HeaderText}" Margin="0,0,0,12" />
+                        <Label Content="Text dole" />
+                        <TextBox Text="{Binding Settings.ReceiptPrinter.FooterText}" Margin="0,0,0,12" />
+                        <CheckBox Content="Automaticky vytisknout po synchronizaci s cloudem" IsChecked="{Binding Settings.ReceiptPrinter.AutoPrintReceipt}" />
+                    </StackPanel>
+                </TabItem>
+
                 <TabItem Header="Cloud">
                     <StackPanel Margin="16" MaxWidth="480" HorizontalAlignment="Left">
                         <CheckBox Content="Povolit Cloudflare synchronizaci" IsChecked="{Binding Settings.Cloud.Enabled}" />
@@ -290,6 +308,8 @@
                                     Command="{Binding TestAiCommand}" />
                             <Button Content="Test tisku" Style="{StaticResource KioskSecondaryButton}" FontSize="16" Margin="0,0,8,8"
                                     Command="{Binding TestPrintCommand}" />
+                            <Button Content="Test účtenky" Style="{StaticResource KioskSecondaryButton}" FontSize="16" Margin="0,0,8,8"
+                                    Command="{Binding TestReceiptPrinterCommand}" />
                             <Button Content="Test cloudu" Style="{StaticResource KioskSecondaryButton}" FontSize="16" Margin="0,0,8,8"
                                     Command="{Binding TestCloudCommand}" />
                             <Button Content="Sync now" Style="{StaticResource KioskSecondaryButton}" FontSize="16" Margin="0,0,8,8"

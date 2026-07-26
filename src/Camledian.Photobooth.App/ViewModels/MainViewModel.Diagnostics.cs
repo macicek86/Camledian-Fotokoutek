@@ -1,6 +1,7 @@
 using System.IO;
 using System.Windows.Threading;
 using Camledian.Photobooth.AI;
+using Camledian.Photobooth.Cloud.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
@@ -186,6 +187,22 @@ public partial class MainViewModel
             {
                 // best-effort cleanup of the scratch test file
             }
+        }
+    }
+
+    [RelayCommand]
+    private async Task TestReceiptPrinterAsync()
+    {
+        var settings = _settingsService.Current.ReceiptPrinter;
+        try
+        {
+            var modules = QrCodeService.GenerateModules("https://fotokoutek.camledian.art/foto/test");
+            var result = await _receiptPrinterService.PrintQrSlipAsync(modules, settings).ConfigureAwait(true);
+            DiagTestMessage = result.Success ? "Testovací tisk účtenky odeslán." : "Testovací tisk účtenky selhal: " + result.ErrorMessage;
+        }
+        catch (Exception ex)
+        {
+            DiagTestMessage = "Testovací tisk účtenky selhal: " + ex.Message;
         }
     }
 

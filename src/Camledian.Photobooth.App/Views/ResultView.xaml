@@ -31,6 +31,10 @@
                 <Image Source="{Binding QrCodeImage}" Margin="8" />
             </Border>
 
+            <Button Content="VYTISKNOUT ÚČTENKU" Style="{StaticResource KioskSecondaryButton}" Margin="0,16,0,0"
+                    Command="{Binding PrintReceiptCommand}"
+                    Visibility="{Binding Settings.ReceiptPrinter.Enabled, Converter={StaticResource BoolToVisibilityConverter}}" />
+
             <TextBlock Text="Tisknu..." Foreground="{StaticResource AccentBrush}" FontSize="22" Margin="0,16,0,0"
                        Visibility="{Binding State, Converter={StaticResource StateToVisibilityConverter}, ConverterParameter=Printing}" />
         </StackPanel>

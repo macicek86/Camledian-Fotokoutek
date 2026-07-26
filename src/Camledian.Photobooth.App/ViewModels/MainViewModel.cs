@@ -32,6 +32,7 @@ public partial class MainViewModel : ObservableObject
     private readonly AssetCatalogService _assetCatalog;
     private readonly SettingsService _settingsService;
     private readonly IPrintingService _printingService;
+    private readonly IReceiptPrinterService _receiptPrinterService;
     private readonly ICameraProvider _camera;
     private readonly BackgroundRemovalServiceFactory _backgroundRemovalFactory;
     private readonly EventRepository _eventRepository;
@@ -117,6 +118,8 @@ public partial class MainViewModel : ObservableObject
 
     public IReadOnlyList<PrinterInfo> AvailablePrinters { get; private set; } = [];
 
+    public IReadOnlyList<string> AvailableReceiptPorts { get; private set; } = [];
+
     public MainViewModel(
         PhotoboothStateMachine fsm,
         PreviewPipelineService preview,
@@ -124,6 +127,7 @@ public partial class MainViewModel : ObservableObject
         AssetCatalogService assetCatalog,
         SettingsService settingsService,
         IPrintingService printingService,
+        IReceiptPrinterService receiptPrinterService,
         ICameraProvider camera,
         BackgroundRemovalServiceFactory backgroundRemovalFactory,
         EventRepository eventRepository,
@@ -144,6 +148,7 @@ public partial class MainViewModel : ObservableObject
         _assetCatalog = assetCatalog;
         _settingsService = settingsService;
         _printingService = printingService;
+        _receiptPrinterService = receiptPrinterService;
         _camera = camera;
         _backgroundRemovalFactory = backgroundRemovalFactory;
         _eventRepository = eventRepository;
@@ -186,6 +191,7 @@ public partial class MainViewModel : ObservableObject
 
         AvailableCameras = _camera.ListDevices();
         AvailablePrinters = _printingService.ListPrinters();
+        AvailableReceiptPorts = _receiptPrinterService.ListPorts();
 
         var cameraSettings = _settingsService.Current.Camera;
         var startOptions = new CameraStartOptions(
@@ -511,6 +517,13 @@ public partial class MainViewModel : ObservableObject
                             QrCodeImage = ImageSharpWpfInterop.FromEncodedBytes(qrBytes);
                             SyncStatusMessage = "Fotografie je online — naskenujte QR kód.";
                         });
+
+                        var receiptSettings = _settingsService.Current.ReceiptPrinter;
+                        if (receiptSettings is { Enabled: true, AutoPrintReceipt: true })
+                        {
+                            await PrintReceiptSlipAsync(photo.DownloadUrl).ConfigureAwait(false);
+                        }
+
                         return;
                     }
                 }
@@ -520,6 +533,41 @@ public partial class MainViewModel : ObservableObject
                 // left the Result screen before the upload finished — fine, sync continues in the background
             }
         }, cts.Token);
+    }
+
+    /// <summary>Prints the QR slip on the Bluetooth/serial thermal receipt printer, if configured
+    /// (spec: BT POS printer add-on). Failure is soft — it only updates SyncStatusMessage, never the
+    /// state machine, since a missing paper slip must not disturb an already-successful photo.</summary>
+    private async Task PrintReceiptSlipAsync(string downloadUrl)
+    {
+        try
+        {
+            var modules = QrCodeService.GenerateModules(downloadUrl);
+            var result = await _receiptPrinterService.PrintQrSlipAsync(modules, _settingsService.Current.ReceiptPrinter)
+                .ConfigureAwait(false);
+            if (!result.Success)
+            {
+                _logger.LogWarning("Receipt slip print failed: {Error}", result.ErrorMessage);
+                await _dispatcher.InvokeAsync(() => { SyncStatusMessage = "Tisk účtenky selhal: " + result.ErrorMessage; })
+                    .Task.ConfigureAwait(false);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Receipt slip print threw unexpectedly.");
+        }
+    }
+
+    [RelayCommand]
+    private async Task PrintReceiptAsync()
+    {
+        if (ResultRecord?.DownloadUrl is not { } downloadUrl)
+        {
+            SyncStatusMessage = "Účtenku lze vytisknout až po synchronizaci s cloudem.";
+            return;
+        }
+
+        await PrintReceiptSlipAsync(downloadUrl).ConfigureAwait(true);
     }
 
     [RelayCommand]

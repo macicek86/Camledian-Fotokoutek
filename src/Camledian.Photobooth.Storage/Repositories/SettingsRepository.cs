@@ -52,6 +52,7 @@ public class SettingsRepository(SqliteConnectionFactory connectionFactory)
             SaveSectionAsync(nameof(AppSettings.Branding), settings.Branding, cancellationToken),
             SaveSectionAsync(nameof(AppSettings.Ai), settings.Ai, cancellationToken),
             SaveSectionAsync(nameof(AppSettings.Print), settings.Print, cancellationToken),
+            SaveSectionAsync(nameof(AppSettings.ReceiptPrinter), settings.ReceiptPrinter, cancellationToken),
             SaveSectionAsync(nameof(AppSettings.Cloud), settings.Cloud, cancellationToken),
             SaveSectionAsync(nameof(AppSettings.Ui), settings.Ui, cancellationToken),
             SaveSectionAsync(nameof(AppSettings.Storage), settings.Storage, cancellationToken));
@@ -77,6 +78,9 @@ public class SettingsRepository(SqliteConnectionFactory connectionFactory)
                 break;
             case nameof(AppSettings.Print):
                 settings.Print = JsonSerializer.Deserialize<PrintSettings>(json, JsonOptions) ?? settings.Print;
+                break;
+            case nameof(AppSettings.ReceiptPrinter):
+                settings.ReceiptPrinter = JsonSerializer.Deserialize<ReceiptPrinterSettings>(json, JsonOptions) ?? settings.ReceiptPrinter;
                 break;
             case nameof(AppSettings.Cloud):
                 settings.Cloud = JsonSerializer.Deserialize<CloudSettings>(json, JsonOptions) ?? settings.Cloud;

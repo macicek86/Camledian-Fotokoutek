@@ -12,6 +12,7 @@ public class AppSettings
     public BrandingSettings Branding { get; set; } = new();
     public AiSettings Ai { get; set; } = new();
     public PrintSettings Print { get; set; } = new();
+    public ReceiptPrinterSettings ReceiptPrinter { get; set; } = new();
     public CloudSettings Cloud { get; set; } = new();
     public UiSettings Ui { get; set; } = new();
     public StorageSettings Storage { get; set; } = new();

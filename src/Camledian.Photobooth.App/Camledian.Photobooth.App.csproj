@@ -25,6 +25,7 @@
     <ProjectReference Include="..\Camledian.Photobooth.AI\Camledian.Photobooth.AI.csproj" />
     <ProjectReference Include="..\Camledian.Photobooth.Storage\Camledian.Photobooth.Storage.csproj" />
     <ProjectReference Include="..\Camledian.Photobooth.Printing\Camledian.Photobooth.Printing.csproj" />
+    <ProjectReference Include="..\Camledian.Photobooth.Printing.Windows\Camledian.Photobooth.Printing.Windows.csproj" />
     <ProjectReference Include="..\Camledian.Photobooth.Cloud\Camledian.Photobooth.Cloud.csproj" />
   </ItemGroup>
 
