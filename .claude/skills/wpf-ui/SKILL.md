@@ -1,6 +1,6 @@
 ---
 name: wpf-ui
-description: Working on the WPF kiosk UI (XAML, App.xaml styles, Views/, AdminView, theming, WPF UI / lepoco controls) or looking up WPF, .NET or NuGet library docs for this repo. Covers which MCP server to ask, and the App.xaml conventions and gotchas that builds do not catch.
+description: Working on the WPF kiosk UI (XAML, App.xaml styles, Views/, AdminView, theming, WPF UI / lepoco controls), wanting to see or screenshot how the kiosk actually looks, or looking up WPF, .NET or NuGet library docs for this repo. Covers the CI screenshot loop, which MCP server to ask, and the App.xaml conventions and gotchas that builds do not catch.
 ---
 
 # WPF kiosk UI — Camledian Photobooth
@@ -29,6 +29,30 @@ Linux. `dotnet build` and `dotnet test` work — `EnableWindowsTargeting` is set
 `Directory.Build.props` — but the kiosk itself needs Windows. A green build proves the C# and
 XAML *compiled*; it says nothing about whether the UI renders. StaticResource misses, layout and
 colour are all runtime. Never report UI appearance as verified from here.
+
+## Seeing the UI — the screenshot loop
+
+`.github/workflows/ui-screenshots.yml` runs the app on `windows-latest` with `--ui-capture <dir>`
+(`src/Camledian.Photobooth.App/Diagnostics/UiCaptureRunner.cs`), capturing all 10 kiosk screens plus
+each Admin tab separately, in real fullscreen kiosk mode. ~1m40s, 20 PNGs.
+
+1. Commit and push the UI change to `main`.
+2. **Ask the user to run it** — Actions → "Kiosk UI screenshots" → Run workflow → `main`. The
+   codespace token is a scopeless `ghu_` user-to-server token, so `gh workflow run` returns 403.
+   The user has declined both a push trigger and a PAT; they prefer being asked. Don't re-propose it.
+3. Fetch and look:
+
+```bash
+gh run list --workflow=ui-screenshots.yml -R macicek86/Camledian-Fotokoutek --limit 1
+gh run download <run-id> -R macicek86/Camledian-Fotokoutek -D <dir>   # then Read the PNGs
+```
+
+Keep it separate from `ci.yml` — `publish-app` there also fires on `workflow_dispatch`, so merging
+them back would drag a ~280MB self-contained publish into every look at the UI.
+
+The runner is a fixed 1024x768, so anything that only breaks at kiosk resolution will not show up.
+Capture sizing must come from `ActualWidth`/`ActualHeight`, never `VisualTreeHelper.GetDescendantBounds`
+— a ScrollViewer's unclipped content extends past the window and pads every shot with a dead band.
 
 ## App.xaml layout
 
@@ -79,6 +103,28 @@ different on every deployment.
 **Theme is fixed Dark and never switches at runtime**, so `StaticResource` is fine for our own
 brushes. WPF UI's own templates use `DynamicResource` internally; that is what makes the startup
 accent override propagate.
+
+**`Binding.StringFormat` does nothing on `Label`.** `Label.Content` is typed `object`, and
+`StringFormat` only applies to a string target — the label silently renders the bare value. Use
+`ContentStringFormat` on the ContentControl instead:
+
+```xml
+<Label Content="{Binding Settings.Ui.BurstCount}" ContentStringFormat="Počet snímků: {0}" />
+```
+
+`TextBlock` is unaffected — `Text` is a string, so `StringFormat` inside the binding is correct there.
+This bit the Admin screen for a long time unnoticed, because nobody could see it.
+
+**Give `Slider` a `MinWidth`.** The Admin tabs stack fields in a `StackPanel` with
+`HorizontalAlignment="Left"`, which sizes to its widest child, and a Slider has no natural width — so
+it collapses to a stub whenever the surrounding labels are short. Applies to any width-less control
+added to those panels.
+
+## Known cosmetic gaps (accepted, do not "fix" unasked)
+
+WPF UI does not tint some native controls into the dark palette: the PIN `PasswordBox` renders solid
+white, and TextBoxes and the tab strip in Admin render light on the dark background. The user has
+looked at these and explicitly chose to leave them. Raise it again only if they ask about theming.
 
 ## Checking a change
 
