@@ -138,8 +138,13 @@
                 <Setter Property="Margin" Value="0,0,0,12" />
             </Style>
 
+            <!-- MinWidth matters: the Admin tabs put their fields in a left-aligned StackPanel, which
+                 sizes to its widest child. A Slider has no natural width of its own, so without a floor
+                 it collapses to a stub whenever the surrounding labels happen to be short. -->
             <Style TargetType="Slider" BasedOn="{StaticResource {x:Type Slider}}">
                 <Setter Property="Margin" Value="0,0,0,4" />
+                <Setter Property="MinWidth" Value="360" />
+                <Setter Property="HorizontalAlignment" Value="Stretch" />
             </Style>
 
             <Style TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">

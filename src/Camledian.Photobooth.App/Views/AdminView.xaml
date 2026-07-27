@@ -60,9 +60,9 @@
                             <TextBox Text="{Binding Settings.Ui.AdminPin}" />
 
                             <TextBlock Text="Série snímků" Style="{StaticResource SectionTitle}" FontSize="18" />
-                            <Label Content="{Binding Settings.Ui.BurstCount, StringFormat='Počet snímků za sebou (1 = bez výběru): {0}'}" />
+                            <Label Content="{Binding Settings.Ui.BurstCount}" ContentStringFormat="Počet snímků za sebou (1 = bez výběru): {0}" />
                             <Slider Minimum="1" Maximum="6" TickFrequency="1" IsSnapToTickEnabled="True" Value="{Binding Settings.Ui.BurstCount}" />
-                            <Label Content="{Binding Settings.Ui.BurstIntervalMs, StringFormat='Pauza mezi snímky (ms): {0}'}" />
+                            <Label Content="{Binding Settings.Ui.BurstIntervalMs}" ContentStringFormat="Pauza mezi snímky (ms): {0}" />
                             <Slider Minimum="500" Maximum="5000" TickFrequency="100" IsSnapToTickEnabled="True" Value="{Binding Settings.Ui.BurstIntervalMs}" />
                             <Label Content="Text výzvy při focení" />
                             <TextBox Text="{Binding Settings.Ui.SmilePromptText}" />
@@ -109,25 +109,25 @@
                 <TabItem Header="Green Screen">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                         <StackPanel Margin="16" MaxWidth="560" HorizontalAlignment="Left">
-                            <Label Content="{Binding Settings.ChromaKey.TargetHueDegrees, StringFormat='Cílová barva (odstín, °): {0:0}'}" />
+                            <Label Content="{Binding Settings.ChromaKey.TargetHueDegrees}" ContentStringFormat="Cílová barva (odstín, °): {0:0}" />
                             <Slider Minimum="0" Maximum="360" Value="{Binding Settings.ChromaKey.TargetHueDegrees}" />
 
-                            <Label Content="{Binding Settings.ChromaKey.HueToleranceDegrees, StringFormat='Tolerance odstínu (°): {0:0}'}" />
+                            <Label Content="{Binding Settings.ChromaKey.HueToleranceDegrees}" ContentStringFormat="Tolerance odstínu (°): {0:0}" />
                             <Slider Minimum="1" Maximum="90" Value="{Binding Settings.ChromaKey.HueToleranceDegrees}" />
 
-                            <Label Content="{Binding Settings.ChromaKey.SaturationThreshold, StringFormat='Práh saturace: {0:0.00}'}" />
+                            <Label Content="{Binding Settings.ChromaKey.SaturationThreshold}" ContentStringFormat="Práh saturace: {0:0.00}" />
                             <Slider Minimum="0" Maximum="1" Value="{Binding Settings.ChromaKey.SaturationThreshold}" />
 
-                            <Label Content="{Binding Settings.ChromaKey.ValueThreshold, StringFormat='Práh jasu: {0:0.00}'}" />
+                            <Label Content="{Binding Settings.ChromaKey.ValueThreshold}" ContentStringFormat="Práh jasu: {0:0.00}" />
                             <Slider Minimum="0" Maximum="1" Value="{Binding Settings.ChromaKey.ValueThreshold}" />
 
-                            <Label Content="{Binding Settings.ChromaKey.FeatherPixels, StringFormat='Feather (px): {0:0.0}'}" />
+                            <Label Content="{Binding Settings.ChromaKey.FeatherPixels}" ContentStringFormat="Feather (px): {0:0.0}" />
                             <Slider Minimum="0" Maximum="20" Value="{Binding Settings.ChromaKey.FeatherPixels}" />
 
-                            <Label Content="{Binding Settings.ChromaKey.EdgeSmoothingPixels, StringFormat='Vyhlazení hran (px): {0:0.0}'}" />
+                            <Label Content="{Binding Settings.ChromaKey.EdgeSmoothingPixels}" ContentStringFormat="Vyhlazení hran (px): {0:0.0}" />
                             <Slider Minimum="0" Maximum="20" Value="{Binding Settings.ChromaKey.EdgeSmoothingPixels}" />
 
-                            <Label Content="{Binding Settings.ChromaKey.SpillSuppressionStrength, StringFormat='Potlačení spill: {0:0.00}'}" />
+                            <Label Content="{Binding Settings.ChromaKey.SpillSuppressionStrength}" ContentStringFormat="Potlačení spill: {0:0.00}" />
                             <Slider Minimum="0" Maximum="1" Value="{Binding Settings.ChromaKey.SpillSuppressionStrength}" />
                         </StackPanel>
                     </ScrollViewer>
@@ -153,10 +153,10 @@
                                        Foreground="{StaticResource MutedTextBrush}" TextWrapping="Wrap" Margin="0,0,0,24"
                                        Visibility="{Binding BackgroundReferenceImagePath, Converter={StaticResource NullToVisibilityConverter}}" />
 
-                            <Label Content="{Binding Settings.BackgroundSubtraction.ThresholdDistance, StringFormat='Citlivost (práh rozdílu): {0:0}'}" />
+                            <Label Content="{Binding Settings.BackgroundSubtraction.ThresholdDistance}" ContentStringFormat="Citlivost (práh rozdílu): {0:0}" />
                             <Slider Minimum="5" Maximum="150" Value="{Binding Settings.BackgroundSubtraction.ThresholdDistance}" />
 
-                            <Label Content="{Binding Settings.BackgroundSubtraction.FeatherPixels, StringFormat='Feather (px): {0:0.0}'}" />
+                            <Label Content="{Binding Settings.BackgroundSubtraction.FeatherPixels}" ContentStringFormat="Feather (px): {0:0.0}" />
                             <Slider Minimum="0" Maximum="20" Value="{Binding Settings.BackgroundSubtraction.FeatherPixels}" />
                         </StackPanel>
                     </ScrollViewer>
@@ -208,7 +208,7 @@
                                 <ComboBoxItem Content="Bottom" />
                                 <ComboBoxItem Content="Custom" />
                             </ComboBox>
-                            <Label Content="{Binding Settings.Branding.BannerYPercent, StringFormat='Vlastní svislá pozice (% výšky, jen pro Custom): {0:0}'}" />
+                            <Label Content="{Binding Settings.Branding.BannerYPercent}" ContentStringFormat="Vlastní svislá pozice (% výšky, jen pro Custom): {0:0}" />
                             <Slider Minimum="0" Maximum="100" Value="{Binding Settings.Branding.BannerYPercent}" />
                             <Label Content="Vodorovné zarovnání textu" />
                             <ComboBox SelectedValue="{Binding Settings.Branding.BannerAlignment}" SelectedValuePath="Content" Margin="0,0,0,4">
@@ -216,9 +216,9 @@
                                 <ComboBoxItem Content="Center" />
                                 <ComboBoxItem Content="Right" />
                             </ComboBox>
-                            <Label Content="{Binding Settings.Branding.BannerMarginPercent, StringFormat='Okraj pro Left/Right (% šířky): {0:0}'}" />
+                            <Label Content="{Binding Settings.Branding.BannerMarginPercent}" ContentStringFormat="Okraj pro Left/Right (% šířky): {0:0}" />
                             <Slider Minimum="0" Maximum="20" Value="{Binding Settings.Branding.BannerMarginPercent}" />
-                            <Label Content="{Binding Settings.Branding.FontSizePercent, StringFormat='Velikost písma (% výšky fotky): {0:0.0}'}" />
+                            <Label Content="{Binding Settings.Branding.FontSizePercent}" ContentStringFormat="Velikost písma (% výšky fotky): {0:0.0}" />
                             <Slider Minimum="1" Maximum="12" Value="{Binding Settings.Branding.FontSizePercent}" />
                             <Label Content="Barva textu (#RRGGBB nebo #RRGGBBAA)" />
                             <TextBox Text="{Binding Settings.Branding.TextColorHex}" />
@@ -238,11 +238,11 @@
                                 <ComboBoxItem Content="BottomRight" />
                                 <ComboBoxItem Content="Custom" />
                             </ComboBox>
-                            <Label Content="{Binding Settings.Branding.LogoXPercent, StringFormat='Vlastní X (% šířky, jen pro Custom): {0:0}'}" />
+                            <Label Content="{Binding Settings.Branding.LogoXPercent}" ContentStringFormat="Vlastní X (% šířky, jen pro Custom): {0:0}" />
                             <Slider Minimum="0" Maximum="100" Value="{Binding Settings.Branding.LogoXPercent}" />
-                            <Label Content="{Binding Settings.Branding.LogoYPercent, StringFormat='Vlastní Y (% výšky, jen pro Custom): {0:0}'}" />
+                            <Label Content="{Binding Settings.Branding.LogoYPercent}" ContentStringFormat="Vlastní Y (% výšky, jen pro Custom): {0:0}" />
                             <Slider Minimum="0" Maximum="100" Value="{Binding Settings.Branding.LogoYPercent}" />
-                            <Label Content="{Binding Settings.Branding.LogoWidthPercent, StringFormat='Šířka loga (% šířky fotky): {0:0}'}" />
+                            <Label Content="{Binding Settings.Branding.LogoWidthPercent}" ContentStringFormat="Šířka loga (% šířky fotky): {0:0}" />
                             <Slider Minimum="3" Maximum="40" Value="{Binding Settings.Branding.LogoWidthPercent}" />
                         </StackPanel>
                     </ScrollViewer>

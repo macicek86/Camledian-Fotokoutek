@@ -113,18 +113,22 @@ internal static class UiCaptureRunner
         await Application.Current.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Loaded);
     }
 
-    private static void Save(Visual visual, string path)
+    /// <summary>
+    /// Sized from the element's own rendered size, not <see cref="VisualTreeHelper.GetDescendantBounds"/>
+    /// — descendant bounds can extend past the window (a ScrollViewer's unclipped content does exactly
+    /// that), which padded every capture with a dead band below the actual UI.
+    /// </summary>
+    private static void Save(FrameworkElement element, string path)
     {
-        var bounds = VisualTreeHelper.GetDescendantBounds(visual);
-        var width = (int)Math.Ceiling(bounds.Width);
-        var height = (int)Math.Ceiling(bounds.Height);
+        var width = (int)Math.Ceiling(element.ActualWidth);
+        var height = (int)Math.Ceiling(element.ActualHeight);
         if (width <= 0 || height <= 0)
         {
             return;
         }
 
         var bitmap = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
-        bitmap.Render(visual);
+        bitmap.Render(element);
 
         var encoder = new PngBitmapEncoder();
         encoder.Frames.Add(BitmapFrame.Create(bitmap));
