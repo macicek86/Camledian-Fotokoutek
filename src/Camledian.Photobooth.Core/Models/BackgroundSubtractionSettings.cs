@@ -18,6 +18,14 @@ public class BackgroundSubtractionSettings
 
     public double FeatherPixels { get; set; } = 3.0;
 
+    /// <summary>
+    /// Compare at half resolution while previewing, and scale the resulting mask back up. Measured at
+    /// 2-2.5x faster for a quarter of the pixels, at the cost of about a point of accuracy on the
+    /// outline — invisible on a preview, so the photo that gets saved is always keyed at full
+    /// resolution regardless of this setting.
+    /// </summary>
+    public bool HalfResolutionPreview { get; set; } = true;
+
     /// <summary>Rescale the reference photo's brightness/colour to match the current frame before
     /// comparing them. Without it, a webcam that re-meters the scene when someone steps in front of
     /// it (auto-exposure, auto white balance) shifts every pixel at once, the reference stops

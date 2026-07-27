@@ -13,4 +13,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/Camledian.Photobooth.Tests/Camledian.Photobooth.Tests.csproj" />
   </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/Camledian.Photobooth.MaskBench/Camledian.Photobooth.MaskBench.csproj" />
+  </Folder>
 </Solution>

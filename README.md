@@ -21,6 +21,9 @@ src/
   Camledian.Photobooth.App        WPF app (net10.0-windows) — the actual kiosk UI, Fluent chrome via WPF UI
 tests/
   Camledian.Photobooth.Tests      xunit tests for Core/Imaging/Camera/Storage
+tools/
+  Camledian.Photobooth.MaskBench  Scores background removal against a scene with known ground truth
+                                    (see "Measuring background removal" below)
 cloud/                            Cloudflare Worker backend (TypeScript, D1, R2)
 assets/
   backgrounds/, overlays/          Bundled demo backgrounds/overlay, also copied next to the built app
@@ -247,6 +250,36 @@ diagnostics button exercises. DirectML is attempted opportunistically at runtime
 back to CPU if unavailable; swap the package reference to `Microsoft.ML.OnnxRuntime.DirectML` in
 `Camledian.Photobooth.AI.csproj` for real GPU acceleration (Windows-only package, so doing that would
 trade away the cross-platform testability described above).
+
+## Measuring background removal
+
+`tools/Camledian.Photobooth.MaskBench` scores the keying pipeline instead of eyeballing it. It builds
+a scene whose ground truth is known by construction — a background photo, a subject and two props
+pasted onto it, then degraded the way a cheap webcam degrades a picture (auto-exposure step, white
+balance drift, sensor noise, JPEG) — and reports, per method: IoU, how much of the subject was
+wrongly removed, how much background was wrongly kept, and **how much of each prop survived**.
+
+```powershell
+dotnet run --project tools/Camledian.Photobooth.MaskBench -- generate .\bench\scene [cutout.png] [coverage]
+dotnet run --project tools/Camledian.Photobooth.MaskBench -- score .\bench\scene [data\models\u2net.onnx] [.\bench\masks]
+```
+
+`coverage` is how much of the frame the subject fills; run it at both ~0.3 (a guest at arm's length)
+and ~0.8 (one leaning into the lens), because they are genuinely different problems — a drift
+compensation that fixes a re-exposing camera can break the close-up case, which is exactly what
+happened once and what a scored run caught. Pass a cut-out PNG of a real person on transparency for a
+realistic subject; without one a drawn stand-in is used, which is enough for everything except hair
+detail. Omit the model path to score the background-subtraction variants alone (no 176 MB download).
+
+Two findings worth keeping in mind, both reproducible with the above:
+
+- **AI alone deletes props.** U-2-Net is a salient-object detector, not a person segmenter, and a
+  sign held out to the side isn't salient — measured retention 0 %, against 98 % for background
+  subtraction, which keeps anything that wasn't in the reference photo without needing to recognise
+  it. For events with props, use a Hybrid mode rather than AI on its own.
+- **The preview model chops hands and arms.** When `u2net.onnx` is missing, final renders silently
+  fall back to `u2netp.onnx`; the Admin screen and the Diagnostics tab now say so, because the
+  difference on hands, arms and anything held is large.
 
 ## Why the WPF app builds on non-Windows
 

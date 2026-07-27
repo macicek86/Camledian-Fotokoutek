@@ -21,11 +21,14 @@ public class BackgroundSubtractionRemovalService(Func<BackgroundSubtractionSetti
     public bool HasReferenceImage(BackgroundSubtractionSettings settings) =>
         !string.IsNullOrWhiteSpace(settings.ReferenceImagePath) && File.Exists(ResolvePath(settings.ReferenceImagePath));
 
-    /// <remarks>Ignores <paramref name="options"/>: the mask is recomputed against the reference
-    /// photo every call, so there is no cached mask to bypass and no heavier model to pick.</remarks>
+    /// <remarks>There is no cached mask to bypass and no heavier model to pick, so
+    /// <see cref="BackgroundRemovalOptions.ForceFreshMask"/> is irrelevant here — but
+    /// <see cref="BackgroundRemovalOptions.UseFinalQualityModel"/> still matters: it marks the photo
+    /// that actually gets saved, which is keyed at full resolution while previews may be halved for
+    /// speed.</remarks>
     public Task<float[]> ApplyAsync(Image<Rgba32> frame, BackgroundRemovalOptions options, CancellationToken cancellationToken = default)
     {
-        var mask = TryComputeMask(frame)
+        var mask = TryComputeMask(frame, options)
             ?? throw new InvalidOperationException("No background-subtraction reference photo captured yet.");
         return Task.FromResult(mask);
     }
@@ -33,11 +36,17 @@ public class BackgroundSubtractionRemovalService(Func<BackgroundSubtractionSetti
     /// <summary>Same as <see cref="ApplyAsync"/> but returns null instead of throwing when no
     /// reference photo has been captured yet — used by combiners (e.g. background-subtraction + AI)
     /// that need to check availability without exceptions as control flow.</summary>
-    public float[]? TryComputeMask(Image<Rgba32> frame)
+    public float[]? TryComputeMask(Image<Rgba32> frame, BackgroundRemovalOptions options)
     {
         var settings = getSettings();
         var reference = GetOrLoadReference(settings);
-        return reference is null ? null : BackgroundSubtractionProcessor.Apply(frame, reference, settings);
+        if (reference is null)
+        {
+            return null;
+        }
+
+        var halfResolution = settings.HalfResolutionPreview && !options.UseFinalQualityModel;
+        return BackgroundSubtractionProcessor.Apply(frame, reference, settings, halfResolution);
     }
 
     private Image<Rgba32>? GetOrLoadReference(BackgroundSubtractionSettings settings)

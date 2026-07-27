@@ -219,6 +219,22 @@ public class BackgroundSubtractionProcessorTests
         Assert.True(mask[(5 * 64) + 5] < 0.05f, "background far from the subject must stay background");
     }
 
+    /// <summary>The half-resolution preview path has to produce the same answer, just coarser — a
+    /// mask that came back at the wrong size or half-empty would show up here.</summary>
+    [Fact]
+    public void HalfResolutionComparisonProducesAFullSizeMaskWithTheSameSubject()
+    {
+        using var reference = Solid(64, new Rgba32(40, 40, 40));
+        using var frame = Solid(64, new Rgba32(40, 40, 40));
+        Fill(frame, new Rectangle(16, 16, 32, 32), new Rgba32(220, 200, 180));
+
+        var mask = BackgroundSubtractionProcessor.Apply(frame, reference, DefaultSettings(), halfResolution: true);
+
+        Assert.Equal(64 * 64, mask.Length);
+        Assert.True(mask[(32 * 64) + 32] > 0.95f, "the subject must be foreground");
+        Assert.True(mask[(4 * 64) + 4] < 0.05f, "the background must stay background");
+    }
+
     [Fact]
     public void FeatherProducesIntermediateAlphaAtBoundary()
     {

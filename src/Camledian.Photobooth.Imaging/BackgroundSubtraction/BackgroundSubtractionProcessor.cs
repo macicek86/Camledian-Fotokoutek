@@ -16,7 +16,14 @@ namespace Camledian.Photobooth.Imaging.BackgroundSubtraction;
 /// </summary>
 public static class BackgroundSubtractionProcessor
 {
-    public static float[] Apply(Image<Rgba32> frame, Image<Rgba32> reference, BackgroundSubtractionSettings settings)
+    /// <param name="halfResolution">Compare at half resolution — see
+    /// <see cref="BackgroundSubtractionSettings.HalfResolutionPreview"/>. Callers rendering the photo
+    /// that gets saved must leave this false.</param>
+    public static float[] Apply(
+        Image<Rgba32> frame,
+        Image<Rgba32> reference,
+        BackgroundSubtractionSettings settings,
+        bool halfResolution = false)
     {
         var width = frame.Width;
         var height = frame.Height;
@@ -31,23 +38,44 @@ public static class BackgroundSubtractionProcessor
             referenceToUse = resizedReference;
         }
 
+        // Halving the resolution averages 2x2 pixels together, which halves the sensor noise the
+        // comparison has to tolerate — and costs a quarter of the work.
+        var scale = halfResolution ? 0.5 : 1.0;
+        var workWidth = Math.Max(1, (int)Math.Round(width * scale));
+        var workHeight = Math.Max(1, (int)Math.Round(height * scale));
+
+        Image<Rgba32>? workFrame = null;
+        Image<Rgba32>? workReference = null;
+
         try
         {
-            var mask = new float[width * height];
+            var comparisonFrame = frame;
+            var comparisonReference = referenceToUse;
+            if (workWidth != width || workHeight != height)
+            {
+                // Box resampling is the averaging we're after — a sharper kernel would preserve the
+                // noise we are trying to get rid of.
+                workFrame = frame.Clone(ctx => ctx.Resize(workWidth, workHeight, KnownResamplers.Box));
+                workReference = referenceToUse.Clone(ctx => ctx.Resize(workWidth, workHeight, KnownResamplers.Box));
+                comparisonFrame = workFrame;
+                comparisonReference = workReference;
+            }
+
+            var mask = new float[workWidth * workHeight];
             var maxDistance = Math.Sqrt(3 * 255.0 * 255.0);
             var thresholdFraction = Math.Clamp(settings.ThresholdDistance / maxDistance, 0.001, 1.0);
 
             var gain = settings.CompensateLightingDrift
-                ? EstimateChannelGain(frame, referenceToUse)
+                ? EstimateChannelGain(comparisonFrame, comparisonReference)
                 : (R: 1.0, G: 1.0, B: 1.0);
 
-            frame.ProcessPixelRows(referenceToUse, (frameAccessor, refAccessor) =>
+            comparisonFrame.ProcessPixelRows(comparisonReference, (frameAccessor, refAccessor) =>
             {
-                for (var y = 0; y < height; y++)
+                for (var y = 0; y < workHeight; y++)
                 {
                     var frameRow = frameAccessor.GetRowSpan(y);
                     var refRow = refAccessor.GetRowSpan(y);
-                    for (var x = 0; x < width; x++)
+                    for (var x = 0; x < workWidth; x++)
                     {
                         var f = frameRow[x];
                         var r = refRow[x];
@@ -57,16 +85,22 @@ public static class BackgroundSubtractionProcessor
                         var distance = Math.Sqrt((dr * dr) + (dg * dg) + (db * db));
                         var normalized = distance / maxDistance;
 
-                        var idx = (y * width) + x;
+                        var idx = (y * workWidth) + x;
                         mask[idx] = normalized > thresholdFraction ? 1f : 0f;
                     }
                 }
             });
 
             // Close the pinholes first, then feather: blurring a hole-ridden mask only turns crisp
-            // holes into soft grey ones.
-            Morphology.Close(mask, width, height, settings.FillHolesPixels);
-            BoxBlur.Apply(mask, width, height, settings.FeatherPixels);
+            // holes into soft grey ones. Both radii are in pixels of the *final* image, so they scale
+            // with the working resolution.
+            Morphology.Close(mask, workWidth, workHeight, settings.FillHolesPixels * scale);
+            BoxBlur.Apply(mask, workWidth, workHeight, settings.FeatherPixels * scale);
+
+            if (workWidth != width || workHeight != height)
+            {
+                mask = MaskResize.Bilinear(mask, workWidth, workHeight, width, height);
+            }
 
             frame.ProcessPixelRows(accessor =>
             {
@@ -88,6 +122,8 @@ public static class BackgroundSubtractionProcessor
         }
         finally
         {
+            workFrame?.Dispose();
+            workReference?.Dispose();
             resizedReference?.Dispose();
         }
     }

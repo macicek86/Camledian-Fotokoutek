@@ -167,6 +167,11 @@
                             <TextBlock Text="Zacelí díry, které vzniknou tam, kde má někdo oblečení v barvě pozadí za sebou. Nikdy nic neubírá, takže tenké rekvizity ani prsty tím nezmizí — příliš velká hodnota ale slepí i skutečné mezery, třeba mezi paží a tělem."
                                        Foreground="{StaticResource MutedTextBrush}" TextWrapping="Wrap" Margin="0,4,0,12" />
 
+                            <CheckBox Content="Rychlejší náhled v polovičním rozlišení (doporučeno)"
+                                      IsChecked="{Binding Settings.BackgroundSubtraction.HalfResolutionPreview}" />
+                            <TextBlock Text="Náhled se klíčuje z poloviny pixelů, což je zhruba dvakrát rychlejší. Uložená fotografie se vždy počítá v plném rozlišení, takže na její kvalitu to nemá vliv."
+                                       Foreground="{StaticResource MutedTextBrush}" TextWrapping="Wrap" Margin="0,4,0,12" />
+
                             <CheckBox Content="Dorovnávat kolísání světla proti referenci (doporučeno)"
                                       IsChecked="{Binding Settings.BackgroundSubtraction.CompensateLightingDrift}" />
                             <TextBlock Text="Přepočítá jas a barvu referenční fotky na aktuální snímek, takže změna expozice nebo světla v sále neudělá z celého obrazu popředí."

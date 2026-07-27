@@ -1,3 +1,4 @@
+using Camledian.Photobooth.Imaging.PixelMath;
 using Microsoft.ML.OnnxRuntime.Tensors;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
@@ -100,40 +101,8 @@ internal static class AiPreprocessing
         return tensor.GetValue(flatIndex);
     }
 
-    /// <summary>Simple bilinear resize of a single-channel mask, used both to upscale the model's
-    /// fixed-size output to the source frame resolution and, defensively, if a model's declared
-    /// output size doesn't match the configured input size.</summary>
-    public static float[] ResizeMask(float[] mask, int srcWidth, int srcHeight, int destWidth, int destHeight)
-    {
-        if (srcWidth == destWidth && srcHeight == destHeight)
-        {
-            return mask;
-        }
-
-        var result = new float[destWidth * destHeight];
-        var xRatio = srcWidth / (float)destWidth;
-        var yRatio = srcHeight / (float)destHeight;
-
-        for (var y = 0; y < destHeight; y++)
-        {
-            var srcY = Math.Min(srcHeight - 1.001f, y * yRatio);
-            var y0 = (int)srcY;
-            var y1 = Math.Min(srcHeight - 1, y0 + 1);
-            var yFrac = srcY - y0;
-
-            for (var x = 0; x < destWidth; x++)
-            {
-                var srcX = Math.Min(srcWidth - 1.001f, x * xRatio);
-                var x0 = (int)srcX;
-                var x1 = Math.Min(srcWidth - 1, x0 + 1);
-                var xFrac = srcX - x0;
-
-                var top = (mask[(y0 * srcWidth) + x0] * (1 - xFrac)) + (mask[(y0 * srcWidth) + x1] * xFrac);
-                var bottom = (mask[(y1 * srcWidth) + x0] * (1 - xFrac)) + (mask[(y1 * srcWidth) + x1] * xFrac);
-                result[(y * destWidth) + x] = (top * (1 - yFrac)) + (bottom * yFrac);
-            }
-        }
-
-        return result;
-    }
+    /// <summary>Upscales the model's fixed-size output to the source frame resolution. Shared with
+    /// background subtraction, which downsamples for noise and scales its mask back up the same way.</summary>
+    public static float[] ResizeMask(float[] mask, int srcWidth, int srcHeight, int destWidth, int destHeight) =>
+        MaskResize.Bilinear(mask, srcWidth, srcHeight, destWidth, destHeight);
 }

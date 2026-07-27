@@ -31,7 +31,7 @@ public class BackgroundSubtractionAiHybridProvider(
 
         // Mutates `frame` in place (alpha channel) and hands back its own raw mask — same convention
         // as ChromaKeyProcessor/BackgroundSubtractionProcessor, this is the copy the caller keeps.
-        var subtractionMask = backgroundSubtraction.TryComputeMask(frame)
+        var subtractionMask = backgroundSubtraction.TryComputeMask(frame, options)
             ?? throw new InvalidOperationException("No background-subtraction reference photo captured yet.");
 
         // A mask the model had no confidence in is amplified noise; taking max() with it would smear
