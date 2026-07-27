@@ -212,8 +212,7 @@ public class AiBackgroundRemovalProvider : IBackgroundRemovalService, IDisposabl
     /// to work at all; the final model is a "nicer if present" upgrade handled by the fallback above.</summary>
     public bool IsPreviewModelAvailable(AiSettings settings) => File.Exists(ResolveModelPath(settings.PreviewModelPath));
 
-    private static string ResolveModelPath(string configuredPath) =>
-        Path.IsPathRooted(configuredPath) ? configuredPath : Path.Combine(AppContext.BaseDirectory, configuredPath);
+    private static string ResolveModelPath(string configuredPath) => AiModelCatalog.ResolvePath(configuredPath);
 
     public void Dispose()
     {

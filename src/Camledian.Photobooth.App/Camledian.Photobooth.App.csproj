@@ -48,4 +48,15 @@
     </Content>
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- ONNX models fetched by scripts/download-models.ps1 into data/models/ (never committed —
+         they are tens/hundreds of MB). Without this copy they only ever exist in the source tree,
+         so AiSettings.PreviewModelPath ("data/models/u2netp.onnx", resolved against the *output*
+         directory) never found them and AI/Hybrid silently fell back to Green Screen. -->
+    <Content Include="data\models\**">
+      <Link>data\models\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>

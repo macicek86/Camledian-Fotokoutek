@@ -77,6 +77,13 @@ public class BackgroundRemovalServiceFactory
             return _greenScreen;
         }
 
+        // Every prerequisite is satisfied — clear any earlier notice and re-arm the one-time warnings.
+        // Without this the "AI model nenalezen" banner stayed on the live screen forever, including
+        // after an admin downloaded the model from Admin > AI / Hybrid and the mode started working.
+        LastFallbackNotice = null;
+        _missingModelWarningLogged = false;
+        _missingReferenceWarningLogged = false;
+
         return mode switch
         {
             BackgroundRemovalMode.Ai => _aiProvider,

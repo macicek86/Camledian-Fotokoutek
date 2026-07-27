@@ -166,18 +166,40 @@
                     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                         <StackPanel Margin="16" MaxWidth="480" HorizontalAlignment="Left">
                             <Label Content="Režim odstranění pozadí" />
-                            <ComboBox SelectedValue="{Binding Settings.Ui.BackgroundRemovalMode}" SelectedValuePath="Content" Margin="0,0,0,16">
-                                <ComboBoxItem Content="GreenScreen" />
-                                <ComboBoxItem Content="Ai" />
-                                <ComboBoxItem Content="Hybrid" />
-                                <ComboBoxItem Content="BackgroundSubtraction" />
-                                <ComboBoxItem Content="BackgroundSubtractionHybrid" />
-                                <ComboBoxItem Content="Auto" />
-                            </ComboBox>
+                            <!-- Enum-typed ItemsSource + SelectedItem, NOT SelectedValuePath="Content":
+                                 string ComboBoxItem contents never compare equal to the enum this is
+                                 bound to, so the box rendered blank and never showed which mode was
+                                 actually active. -->
+                            <ComboBox ItemsSource="{Binding BackgroundRemovalModes}"
+                                      SelectedItem="{Binding Settings.Ui.BackgroundRemovalMode}" Margin="0,0,0,16" />
                             <Label Content="Model pro náhled (rychlý)" />
                             <TextBox Text="{Binding Settings.Ai.PreviewModelPath}" />
                             <Label Content="Model pro finální fotografii (přesnější, pomalejší)" />
                             <TextBox Text="{Binding Settings.Ai.FinalModelPath}" />
+
+                            <!-- Model management: without this the only way to get AI mode working
+                                 was a PowerShell script plus a rebuild, which is not something an
+                                 operator can do during an event. -->
+                            <Border Background="{StaticResource SurfaceBrush}" CornerRadius="8" Padding="12" Margin="0,12,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding AiModelStatus}" Foreground="{StaticResource TextBrush}"
+                                               TextWrapping="Wrap" Margin="0,0,0,8" />
+
+                                    <Button Content="Stáhnout chybějící modely" Command="{Binding DownloadAiModelsCommand}"
+                                            HorizontalAlignment="Left"
+                                            Visibility="{Binding CanDownloadAiModels, Converter={StaticResource BoolToVisibilityConverter}}" />
+
+                                    <StackPanel Visibility="{Binding IsAiModelDownloading, Converter={StaticResource BoolToVisibilityConverter}}">
+                                        <ProgressBar Value="{Binding AiModelDownloadPercent, Mode=OneWay}" Minimum="0" Maximum="100"
+                                                     Height="8" Margin="0,0,0,6" />
+                                        <DockPanel>
+                                            <Button DockPanel.Dock="Right" Content="Zrušit" Command="{Binding CancelAiModelDownloadCommand}" />
+                                            <TextBlock Text="{Binding AiModelDownloadDetail}" Foreground="{StaticResource MutedTextBrush}"
+                                                       VerticalAlignment="Center" />
+                                        </DockPanel>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
                             <CheckBox Content="Preferovat DirectML (GPU) na Windows" IsChecked="{Binding Settings.Ai.PreferDirectML}" />
                             <Label Content="Preview inference FPS" />
                             <TextBox Text="{Binding Settings.Ai.PreviewInferenceFps}" />

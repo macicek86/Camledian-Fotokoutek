@@ -73,4 +73,5 @@ foreach ($model in $models) {
 }
 
 Write-Host ""
-Write-Host "Done. AiSettings.PreviewModelPath / FinalModelPath (Admin > AI / Hybrid) already point at models/u2netp.onnx and models/u2net.onnx by default."
+Write-Host "Done. AiSettings.PreviewModelPath / FinalModelPath (Admin > AI / Hybrid) already point at data/models/u2netp.onnx and data/models/u2net.onnx by default."
+Write-Host "The app resolves those against the built exe's folder, so rebuild (or ./scripts/run.ps1) once — the csproj copies data/models/ into the output directory."

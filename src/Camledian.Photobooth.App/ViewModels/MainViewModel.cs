@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using Camledian.Photobooth.AI;
 using Camledian.Photobooth.App.Services;
 using Camledian.Photobooth.App.Wpf;
 using Camledian.Photobooth.Camera;
@@ -37,6 +38,7 @@ public partial class MainViewModel : ObservableObject
     private readonly IReceiptPrinterService _receiptPrinterService;
     private readonly ICameraProvider _camera;
     private readonly BackgroundRemovalServiceFactory _backgroundRemovalFactory;
+    private readonly AiModelDownloadService _aiModelDownloadService;
     private readonly EventRepository _eventRepository;
     private readonly AssetRepository _assetRepository;
     private readonly PhotoRepository _photoRepository;
@@ -148,6 +150,10 @@ public partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(AvailableCameras));
     }
 
+    /// <summary>Backs the Admin > AI / Hybrid mode picker with the actual enum values, so the
+    /// ComboBox can bind SelectedItem directly against Settings.Ui.BackgroundRemovalMode.</summary>
+    public IReadOnlyList<BackgroundRemovalMode> BackgroundRemovalModes { get; } = Enum.GetValues<BackgroundRemovalMode>();
+
     public IReadOnlyList<PrinterInfo> AvailablePrinters { get; private set; } = [];
 
     public IReadOnlyList<string> AvailableReceiptPorts { get; private set; } = [];
@@ -162,6 +168,7 @@ public partial class MainViewModel : ObservableObject
         IReceiptPrinterService receiptPrinterService,
         ICameraProvider camera,
         BackgroundRemovalServiceFactory backgroundRemovalFactory,
+        AiModelDownloadService aiModelDownloadService,
         EventRepository eventRepository,
         AssetRepository assetRepository,
         PhotoRepository photoRepository,
@@ -183,6 +190,7 @@ public partial class MainViewModel : ObservableObject
         _receiptPrinterService = receiptPrinterService;
         _camera = camera;
         _backgroundRemovalFactory = backgroundRemovalFactory;
+        _aiModelDownloadService = aiModelDownloadService;
         _eventRepository = eventRepository;
         _assetRepository = assetRepository;
         _photoRepository = photoRepository;
@@ -199,7 +207,9 @@ public partial class MainViewModel : ObservableObject
         _preview.FrameReady += (_, bitmap) =>
         {
             PreviewImage = bitmap;
-            BackgroundRemovalNotice = _backgroundRemovalFactory.LastFallbackNotice;
+            // A missing prerequisite (no AI model / no reference photo) explains the picture better
+            // than "nothing got keyed out", so it wins when both are set.
+            BackgroundRemovalNotice = _backgroundRemovalFactory.LastFallbackNotice ?? _preview.EmptyMaskNotice;
         };
     }
 
@@ -208,6 +218,11 @@ public partial class MainViewModel : ObservableObject
         await _settingsService.LoadAsync().ConfigureAwait(true);
         IsKioskMode = _settingsService.Current.Ui.KioskMode;
         BackgroundReferenceImagePath = _settingsService.Current.BackgroundSubtraction.ReferenceImagePath;
+
+        // From startup, not just on PIN unlock: the status is also what the log and the CI screenshot
+        // pass see, and an operator opening Admin should not have to wait for a refresh to learn a
+        // model is missing.
+        RefreshAiModelStatus();
 
         await _assetCatalog.InitializeAsync().ConfigureAwait(true);
         Backgrounds.Clear();
@@ -698,6 +713,7 @@ public partial class MainViewModel : ObservableObject
             PinError = null;
             IsAdminUnlocked = true;
             StartDiagnosticsTimer();
+            RefreshAiModelStatus();
         }
         else
         {

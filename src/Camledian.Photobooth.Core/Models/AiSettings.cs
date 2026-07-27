@@ -5,12 +5,12 @@ public class AiSettings
     /// <summary>Small/fast model used for the live preview loop (spec §24) — needs to keep up with
     /// the camera, not be maximally accurate. Relative to the app's base directory. Downloaded by
     /// scripts/download-models.ps1, never committed to git.</summary>
-    public string PreviewModelPath { get; set; } = "models/u2netp.onnx";
+    public string PreviewModelPath { get; set; } = "data/models/u2netp.onnx";
 
     /// <summary>Larger, more accurate model run once after capture (spec §25) — final quality
     /// matters more than speed here, since it's a single inference rather than a per-frame one.
     /// Falls back to <see cref="PreviewModelPath"/> if this file isn't present.</summary>
-    public string FinalModelPath { get; set; } = "models/u2net.onnx";
+    public string FinalModelPath { get; set; } = "data/models/u2net.onnx";
 
     public bool PreferDirectML { get; set; } = true;
 

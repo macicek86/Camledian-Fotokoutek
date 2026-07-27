@@ -164,6 +164,11 @@ public partial class App : Application
             () => sp.GetRequiredService<SettingsService>().Current.Ai,
             sp.GetRequiredService<ILogger<AiBackgroundRemovalProvider>>()));
         services.AddSingleton<BackgroundRemovalServiceFactory>();
+        // Its own HttpClient: model downloads are hundreds of MB and must not share a timeout or
+        // connection budget with the cloud sync client.
+        services.AddSingleton(sp => new AiModelDownloadService(
+            new HttpClient { Timeout = Timeout.InfiniteTimeSpan },
+            sp.GetRequiredService<ILogger<AiModelDownloadService>>()));
 
         // Camera
         services.AddSingleton<CameraProviderFactory>();

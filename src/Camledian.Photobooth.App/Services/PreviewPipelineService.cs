@@ -38,6 +38,15 @@ public sealed class PreviewPipelineService(
     public double LastChromaKeyOrAiMs { get; private set; }
     public double LastCompositionMs { get; private set; }
 
+    /// <summary>Set when the active technique ran fine but cut out (almost) nothing — every pixel
+    /// stayed opaque, so the composed frame is the raw camera image and the chosen background is
+    /// completely hidden behind it. Without this the kiosk looked identical to "background
+    /// replacement is broken": a correctly configured Green Screen mode pointed at a room with no
+    /// green screen produces exactly that picture, and nothing on screen said why.
+    /// <see cref="BackgroundRemovalServiceFactory.LastFallbackNotice"/> only covers the different
+    /// case where a prerequisite was missing and a *substitute* technique was used.</summary>
+    public string? EmptyMaskNotice { get; private set; }
+
     public async Task StartAsync(CameraStartOptions options, CancellationToken cancellationToken = default)
     {
         await camera.StartAsync(options, cancellationToken).ConfigureAwait(false);
@@ -87,8 +96,9 @@ public sealed class PreviewPipelineService(
                 {
                     var sw = System.Diagnostics.Stopwatch.StartNew();
                     var backgroundRemoval = backgroundRemovalFactory.Resolve();
-                    await backgroundRemoval.ApplyAsync(cameraFrame.Image, highQuality: false, token).ConfigureAwait(false);
+                    var mask = await backgroundRemoval.ApplyAsync(cameraFrame.Image, highQuality: false, token).ConfigureAwait(false);
                     LastChromaKeyOrAiMs = sw.Elapsed.TotalMilliseconds;
+                    UpdateEmptyMaskNotice(mask, backgroundRemoval.Name);
 
                     sw.Restart();
                     using var background = SelectedBackground?.Clone() ?? CreateBlankCanvas();
@@ -103,6 +113,41 @@ public sealed class PreviewPipelineService(
                     logger.LogError(ex, "Preview pipeline frame failed.");
                 }
             }
+        }
+    }
+
+    /// <summary>Measures how much of the frame the mask actually keyed out and raises/clears
+    /// <see cref="EmptyMaskNotice"/>. Subsampled (every 16th pixel) because this runs per frame on a
+    /// full-resolution mask, and hysteresis'd — raise below 1% removed, clear above 3% — so a subject
+    /// stepping right up to the lens can't make the warning strobe on and off.</summary>
+    private void UpdateEmptyMaskNotice(float[] mask, string techniqueName)
+    {
+        const int step = 16;
+        var sampled = 0;
+        var removed = 0;
+        for (var i = 0; i < mask.Length; i += step)
+        {
+            sampled++;
+            if (mask[i] < 0.5f)
+            {
+                removed++;
+            }
+        }
+
+        if (sampled == 0)
+        {
+            return;
+        }
+
+        var removedFraction = removed / (double)sampled;
+        if (removedFraction < 0.01)
+        {
+            EmptyMaskNotice = $"{techniqueName}: z obrazu se neodstranilo nic — vybrané pozadí je proto celé schované. " +
+                "Zkontrolujte green screen a nasvícení, nebo zvolte jiný režim v Admin > AI / Hybrid.";
+        }
+        else if (removedFraction > 0.03)
+        {
+            EmptyMaskNotice = null;
         }
     }
 

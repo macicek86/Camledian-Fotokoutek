@@ -186,11 +186,23 @@ site's domain, to avoid colliding with that domain's own Worker routes.
 ## AI models
 
 The AI/Hybrid background-removal modes need segmentation models that aren't committed to git
-(spec: don't put large model binaries in the repo). Fetch them with:
+(spec: don't put large model binaries in the repo).
+
+**From the app (preferred):** Admin → AI / Hybrid shows which models are missing and offers
+**"Stáhnout chybějící modely"** — a progress bar, a Cancel button, and a SHA-256 check against
+`AiModelCatalog` when the bytes are in. The download streams into a `.part` file and is only moved
+onto the real path once that hash matches, so an interrupted or corrupted download can never leave
+something behind that ONNX Runtime would choke on. Models land directly in the folder the app loads
+them from, so the next preview frame picks them up — no restart, no rebuild.
+
+**From the shell**, for provisioning a machine before an event:
 
 ```
 ./scripts/download-models.ps1
 ```
+
+The script downloads into the project's `data/models/`, which the build copies next to the exe — so
+after running it, rebuild once (`./scripts/run.ps1` does).
 
 This downloads **two** models, matching the app's preview-vs-final quality split (spec §24/§25 —
 preview can't wait, final quality can afford to):
@@ -249,7 +261,14 @@ possible and let CI do full compilation.
   webcam; the app falls back to `MockCameraProvider` automatically (toggle via
   `Camera.UseMockIfUnavailable` in Admin → Kamera).
 - **AI mode does nothing / falls back to Green Screen** — run `./scripts/download-models.ps1`, then
-  restart the app (or just switch modes again in Admin → AI / Hybrid).
+  **rebuild** (`./scripts/run.ps1` does this): the script downloads into the project's
+  `data/models/`, and the build is what copies that next to the exe, which is where
+  `AiSettings.PreviewModelPath` (`data/models/u2netp.onnx`) is resolved.
+- **The chosen background never appears — neither in the live preview nor in the saved photo** — the
+  keying removed nothing, so the fully opaque camera frame covers the background. The live screen now
+  says so explicitly. Usual causes: Green Screen mode (the default) with no green screen in shot, a
+  badly lit/shadowed screen, or a hue/tolerance mismatch in Admin → Green Screen. With no green
+  screen at all, use Admin → "Odečítání pozadí" (capture the empty scene) or AI mode.
 - **Print button does nothing / errors** — check Admin → Tisk lists a real printer name; a failed
   print never deletes the photo, so retry is always safe from the Result screen.
 - **Cloud sync says "Nespárováno"** — pair the device first: Admin → Cloud → "Spárovat zařízení",
