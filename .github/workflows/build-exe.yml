@@ -1,0 +1,48 @@
+name: Build Windows exe
+
+# Builds the downloadable, self-contained CamledianPhotobooth.exe and nothing else, so getting an
+# installable build is one click and one Windows job. Previously this lived in ci.yml behind the
+# build+test job, which meant a manual "just give me an exe" also paid for a full solution build and
+# the whole test run.
+#
+# Kept callable so ci.yml can still gate it behind tests for an actual v* release — the publish
+# command lives here only, rather than being copy-pasted into two workflows where it would drift.
+on:
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  publish-app:
+    name: Publish Windows app (exe)
+    # Windows runners bill at a 2x minute multiplier and this re-restores/publishes ~280MB, which is
+    # why it is never wired to push/PR.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      # Self-contained, single-file .exe — no separate .NET runtime install needed on the kiosk PC.
+      # Native libraries (OpenCvSharp, ONNX Runtime, SQLite) that can't live inside the single file
+      # are extracted next to it at first run, via IncludeNativeLibrariesForSelfExtract.
+      #
+      # The ONNX models are deliberately not in here: they aren't committed to git, so the csproj's
+      # data/models copy matches nothing on a CI checkout. The kiosk fetches them at first use from
+      # Admin > AI / Hybrid, which keeps ~181MB out of every published build.
+      - name: Publish Windows app (self-contained exe)
+        run: >
+          dotnet publish src/Camledian.Photobooth.App/Camledian.Photobooth.App.csproj
+          -c Release -r win-x64 --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:DebugType=None
+          -o publish/CamledianPhotobooth
+
+      - name: Upload app artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CamledianPhotobooth-windows-x64
+          path: publish/CamledianPhotobooth/**

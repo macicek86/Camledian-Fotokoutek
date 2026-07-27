@@ -39,36 +39,11 @@ jobs:
           name: dotnet-test-results
           path: "**/test-results.trx"
 
-  # Builds the downloadable, self-contained CamledianPhotobooth.exe. Deliberately NOT run on every
-  # push/PR (Windows runners bill at a 2x minute multiplier and this step alone re-restores/publishes
-  # ~280MB) — only on a manual "Run workflow" click or when a v* tag is pushed (i.e. an actual release).
+  # A release must never ship an exe whose tests didn't pass, so the v* tag path keeps the build+test
+  # gate. The publish itself lives in build-exe.yml — run that directly to get an exe without paying
+  # for build+test, which is the common case.
   publish-app:
     name: Publish Windows app (exe)
     needs: dotnet
-    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: "10.0.x"
-
-      # Self-contained, single-file .exe — no separate .NET runtime install needed on the kiosk PC.
-      # Native libraries (OpenCvSharp, ONNX Runtime, SQLite) that can't live inside the single file
-      # are extracted next to it at first run, via IncludeNativeLibrariesForSelfExtract.
-      - name: Publish Windows app (self-contained exe)
-        run: >
-          dotnet publish src/Camledian.Photobooth.App/Camledian.Photobooth.App.csproj
-          -c Release -r win-x64 --self-contained true
-          -p:PublishSingleFile=true
-          -p:IncludeNativeLibrariesForSelfExtract=true
-          -p:DebugType=None
-          -o publish/CamledianPhotobooth
-
-      - name: Upload app artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: CamledianPhotobooth-windows-x64
-          path: publish/CamledianPhotobooth/**
+    if: startsWith(github.ref, 'refs/tags/v')
+    uses: ./.github/workflows/build-exe.yml

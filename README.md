@@ -28,6 +28,9 @@ assets/
                                     the per-photo Branding.LogoPath, which stamps a logo onto the photo
 scripts/                          setup / build / test / run / download-models / dev-cloud (PowerShell)
 .github/workflows/ci.yml          .NET CI: Windows build+test — manual run, or a v* release tag
+.github/workflows/build-exe.yml   Self-contained CamledianPhotobooth.exe — manual run; also called
+                                    by ci.yml on a v* tag, so releases stay gated on the tests
+.github/workflows/ui-screenshots.yml  Screenshots every kiosk screen on Windows — manual run only
 .github/workflows/cloud.yml       Cloud CI: Worker typecheck+test — manual run only
 ```
 
