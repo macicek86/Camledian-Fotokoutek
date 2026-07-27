@@ -1,0 +1,60 @@
+name: Kiosk UI screenshots
+
+# Screenshots every kiosk screen in real fullscreen kiosk mode and uploads them as an artifact.
+# The UI is developed from a Linux devcontainer where WPF cannot render at all, so this runner is the
+# only place the result of a XAML change can actually be looked at.
+#
+# Deliberately its own workflow rather than a job in ci.yml: publish-app there also fires on
+# workflow_dispatch, so a manual run just to look at the UI would drag in build+test and a ~280MB
+# self-contained publish alongside it. Keeping it separate makes "look at the UI" one click and one
+# Windows job.
+on:
+  workflow_dispatch:
+
+jobs:
+  screenshots:
+    name: Capture kiosk screens
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Build app
+        run: dotnet build src/Camledian.Photobooth.App/Camledian.Photobooth.App.csproj -c Release
+
+      # WinExe does not block the shell, so waiting on the process explicitly is what gates the
+      # upload on the capture pass actually being finished.
+      - name: Capture kiosk screens
+        shell: pwsh
+        run: |
+          $exe = "src/Camledian.Photobooth.App/bin/Release/net10.0-windows/CamledianPhotobooth.exe"
+          $out = Join-Path $env:GITHUB_WORKSPACE "ui-screenshots"
+          $proc = Start-Process -FilePath $exe -ArgumentList "--ui-capture", $out -PassThru
+          if (-not $proc.WaitForExit(180000)) {
+            $proc.Kill()
+            throw "UI capture timed out after 180s."
+          }
+          $shots = @(Get-ChildItem $out -Filter *.png -ErrorAction SilentlyContinue)
+          Write-Host "Captured $($shots.Count) screenshot(s)."
+          if ($shots.Count -eq 0) { throw "UI capture produced no screenshots." }
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kiosk-ui-screenshots
+          path: ui-screenshots/**
+
+      # Serilog writes next to the exe (StoragePaths resolves "data/logs" against AppContext.BaseDirectory).
+      # Without this a crash in the capture pass would surface only as "produced no screenshots".
+      - name: Upload app logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kiosk-ui-capture-logs
+          path: src/Camledian.Photobooth.App/bin/Release/net10.0-windows/data/logs/**
+          if-no-files-found: ignore
