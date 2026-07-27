@@ -68,7 +68,7 @@ export function landingPage(): Response {
 </head>
 <body>
   <header>
-    <img class="badge" src="/logo-full.png" alt="Camledian Fotokoutek">
+    <img class="badge" src="/logo-web.png" width="420" height="453" alt="Camledian Fotokoutek">
     <h1>Camledian Fotokoutek</h1>
     <p>Moderní fotokoutek se zeleným plátnem, AI úpravou pozadí a okamžitým sdílením fotek přes QR kód —
        na svatby, firemní akce i oslavy.</p>

@@ -676,3 +676,64 @@ describe("hardening regressions", () => {
     expect(res.headers.get("access-control-allow-origin")).toBeNull();
   });
 });
+
+// Also placed after the "gallery starts out empty" assertions: these leave uploaded rows behind.
+describe("gallery download filename", () => {
+  it("names the downloaded file after the capture time and the event", async () => {
+    const deviceId = crypto.randomUUID();
+    const eventId = crypto.randomUUID();
+    const now = new Date().toISOString();
+    // 14:35 Prague in July = 12:35 UTC — the filename must carry the local time the guests saw.
+    const takenAt = "2026-07-27T12:35:00.000Z";
+
+    await testEnv.DB
+      .prepare("INSERT INTO photobooth_devices (id, name, token_hash, paired_at) VALUES (?, 'Filename Fixture', 'unused-filename', ?)")
+      .bind(deviceId, now)
+      .run();
+    await testEnv.DB
+      .prepare("INSERT INTO photobooth_events (id, name, device_id, created_at) VALUES (?, 'Svatba Novákovi', ?, ?)")
+      .bind(eventId, deviceId, now)
+      .run();
+    await testEnv.ASSETS_BUCKET.put("photos/filename-fixture.jpg", new Uint8Array([1, 2, 3]));
+    await testEnv.DB
+      .prepare(
+        `INSERT INTO photobooth_photos (id, device_id, event_id, r2_key, content_type, status, download_token, created_at, uploaded_at, expires_at)
+         VALUES (?, ?, ?, 'photos/filename-fixture.jpg', 'image/jpeg', 'uploaded', 'filename-token-1234', ?, ?, NULL)`,
+      )
+      .bind(crypto.randomUUID(), deviceId, eventId, takenAt, now)
+      .run();
+
+    const res = await SELF.fetch("https://example.com/foto/filename-token-1234/file?download=1");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-disposition")).toBe(
+      'attachment; filename="camledian-fotokoutek-2026-07-27-1435-svatba-novakovi.jpg"',
+    );
+
+    // Without ?download=1 the bytes are shown inline on the page, no filename involved.
+    const inline = await SELF.fetch("https://example.com/foto/filename-token-1234/file");
+    expect(inline.headers.get("content-disposition")).toBeNull();
+  });
+
+  it("drops the event segment for a photo taken outside any event", async () => {
+    const deviceId = crypto.randomUUID();
+    const now = new Date().toISOString();
+
+    await testEnv.DB
+      .prepare("INSERT INTO photobooth_devices (id, name, token_hash, paired_at) VALUES (?, 'No Event Fixture', 'unused-no-event', ?)")
+      .bind(deviceId, now)
+      .run();
+    await testEnv.ASSETS_BUCKET.put("photos/no-event-fixture.jpg", new Uint8Array([4, 5, 6]));
+    await testEnv.DB
+      .prepare(
+        `INSERT INTO photobooth_photos (id, device_id, event_id, r2_key, content_type, status, download_token, created_at, uploaded_at, expires_at)
+         VALUES (?, ?, NULL, 'photos/no-event-fixture.jpg', 'image/jpeg', 'uploaded', 'no-event-token-1234', '2026-01-05T08:04:00.000Z', ?, NULL)`,
+      )
+      .bind(crypto.randomUUID(), deviceId, now)
+      .run();
+
+    const res = await SELF.fetch("https://example.com/foto/no-event-token-1234/file?download=1");
+    expect(res.headers.get("content-disposition")).toBe(
+      'attachment; filename="camledian-fotokoutek-2026-01-05-0904.jpg"',
+    );
+  });
+});
