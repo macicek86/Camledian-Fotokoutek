@@ -204,6 +204,21 @@ public partial class MainViewModel : ObservableObject
         _logger = logger;
 
         _fsm.StateChanged += (_, e) => State = e.To;
+
+        // SettingsRepository.LoadAsync builds a brand-new AppSettings (and new section objects)
+        // every call, and Settings is just a pass-through to SettingsService.Current — so a reload
+        // silently leaves every Admin binding attached to the *previous* instance. Edits then landed
+        // on an object nothing reads: picking any background-removal mode appeared to do nothing and
+        // the kiosk stayed on Green Screen forever, and CloseAdminAsync saved the untouched copy back
+        // over them. Re-raising Settings makes WPF re-resolve the whole binding path onto the new
+        // instance.
+        _settingsService.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(SettingsService.Current))
+            {
+                OnPropertyChanged(nameof(Settings));
+            }
+        };
         _preview.FrameReady += (_, bitmap) =>
         {
             PreviewImage = bitmap;
@@ -215,7 +230,9 @@ public partial class MainViewModel : ObservableObject
 
     public async Task InitializeAsync()
     {
-        await _settingsService.LoadAsync().ConfigureAwait(true);
+        // Deliberately no LoadAsync here: App.OnStartup already loaded settings before this window
+        // (and the DI services that capture Storage/Camera sections) was built. Reloading at this
+        // point would throw away that instance for an identical one, for no benefit.
         IsKioskMode = _settingsService.Current.Ui.KioskMode;
         BackgroundReferenceImagePath = _settingsService.Current.BackgroundSubtraction.ReferenceImagePath;
 
