@@ -15,9 +15,9 @@ const ADMIN_KEY = "test-admin-key";
  * which is fine here — we only care that "boss" exists by the time we try to log in) and returns
  * its session cookie, for tests that need a logged-in admin. */
 async function loginAsBoss(): Promise<string> {
-  await SELF.fetch(`https://example.com/admin/setup?key=${ADMIN_KEY}`, {
+  await SELF.fetch("https://example.com/admin/setup", {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", "x-admin-key": ADMIN_KEY },
     body: JSON.stringify({ username: "boss", password: "correct-horse-battery" }),
   });
 
@@ -90,9 +90,9 @@ describe("device pairing (spec §36)", () => {
       body: JSON.stringify({ code: "TEST-0003" }),
     });
 
-    const confirm = await SELF.fetch(`https://example.com/api/photobooth/pair/confirm?key=${ADMIN_KEY}`, {
+    const confirm = await SELF.fetch("https://example.com/api/photobooth/pair/confirm", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", "x-admin-key": ADMIN_KEY },
       body: JSON.stringify({ code: "TEST-0003", deviceName: "Test Kiosk" }),
     });
     expect(confirm.status).toBe(200);
@@ -145,16 +145,16 @@ describe("admin bootstrap (spec §56 — standalone admin login)", () => {
   });
 
   it("creates the first admin with the bootstrap key, then refuses a second bootstrap", async () => {
-    const first = await SELF.fetch(`https://example.com/admin/setup?key=${ADMIN_KEY}`, {
+    const first = await SELF.fetch("https://example.com/admin/setup", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", "x-admin-key": ADMIN_KEY },
       body: JSON.stringify({ username: "boss", password: "correct-horse-battery" }),
     });
     expect(first.status).toBe(200);
 
-    const second = await SELF.fetch(`https://example.com/admin/setup?key=${ADMIN_KEY}`, {
+    const second = await SELF.fetch("https://example.com/admin/setup", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", "x-admin-key": ADMIN_KEY },
       body: JSON.stringify({ username: "someone-else", password: "another-password" }),
     });
     expect(second.status).toBe(409);
@@ -335,12 +335,19 @@ describe("admin console: devices", () => {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ code: "DEV1-0001" }),
     });
-    const confirm = await SELF.fetch(`https://example.com/api/photobooth/pair/confirm?key=${ADMIN_KEY}`, {
+    const confirm = await SELF.fetch("https://example.com/api/photobooth/pair/confirm", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", "x-admin-key": ADMIN_KEY },
       body: JSON.stringify({ code: "DEV1-0001", deviceName: "Kiosk A" }),
     });
-    const { deviceId, deviceToken } = await confirm.json<{ deviceId: string; deviceToken: string }>();
+    const { deviceId } = await confirm.json<{ deviceId: string }>();
+
+    // The token comes from /pair/status, not from the confirm response — this test used to
+    // destructure `deviceToken` off the confirm body, where it has never existed, so the
+    // "revoked token stops working" assertion at the end was passing on `Bearer undefined`.
+    const status = await SELF.fetch("https://example.com/api/photobooth/pair/status/DEV1-0001");
+    const { deviceToken } = await status.json<{ deviceToken: string }>();
+    expect(deviceToken).toBeTruthy();
 
     const cookie = await loginAsBoss();
 
@@ -449,9 +456,9 @@ describe("photo upload (spec §34/§39)", () => {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ code }),
     });
-    await SELF.fetch(`https://example.com/api/photobooth/pair/confirm?key=${ADMIN_KEY}`, {
+    await SELF.fetch("https://example.com/api/photobooth/pair/confirm", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", "x-admin-key": ADMIN_KEY },
       body: JSON.stringify({ code, deviceName: "Upload Test Kiosk" }),
     });
 
@@ -519,5 +526,153 @@ describe("photo upload (spec §34/§39)", () => {
       body: new Uint8Array([9]),
     });
     expect(upload.status).toBe(404);
+  });
+
+  it("refuses a second upload against an already-uploaded photo", async () => {
+    const deviceToken = await pairDevice("UPLD-0004");
+
+    const created = await SELF.fetch("https://example.com/api/photobooth/photos", {
+      method: "POST",
+      headers: { authorization: `Bearer ${deviceToken}`, "content-type": "application/json" },
+      body: JSON.stringify({ contentType: "image/jpeg" }),
+    });
+    const { photoId, uploadUrl } = await created.json<{ photoId: string; uploadUrl: string }>();
+
+    const put = (body: Uint8Array) =>
+      SELF.fetch(`https://example.com${uploadUrl}`, {
+        method: "PUT",
+        headers: { authorization: `Bearer ${deviceToken}`, "content-type": "image/jpeg" },
+        body,
+      });
+
+    expect((await put(new Uint8Array([1, 1, 1]))).status).toBe(200);
+    await SELF.fetch(`https://example.com/api/photobooth/photos/${photoId}/upload-complete`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${deviceToken}` },
+    });
+
+    // The QR code is already out in the world at this point — swapping the bytes behind it would
+    // silently change what a guest downloads.
+    expect((await put(new Uint8Array([2, 2, 2]))).status).toBe(409);
+  });
+
+  it("rejects a contentType that only resolves through Object's prototype chain", async () => {
+    const deviceToken = await pairDevice("UPLD-0005");
+
+    const created = await SELF.fetch("https://example.com/api/photobooth/photos", {
+      method: "POST",
+      headers: { authorization: `Bearer ${deviceToken}`, "content-type": "application/json" },
+      body: JSON.stringify({ contentType: "constructor" }),
+    });
+    expect(created.status).toBe(400);
+  });
+});
+
+describe("hardening regressions", () => {
+  it("no longer accepts the admin key as a ?key= query parameter", async () => {
+    const viaQuery = await SELF.fetch(`https://example.com/api/photobooth/pair/confirm?key=${ADMIN_KEY}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ code: "QRY1-0001" }),
+    });
+    expect(viaQuery.status).toBe(401);
+  });
+
+  it("stops handing out the device token once the collection window has passed", async () => {
+    await SELF.fetch("https://example.com/api/photobooth/pair/start", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ code: "LATE-0001" }),
+    });
+    await SELF.fetch("https://example.com/api/photobooth/pair/confirm", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-admin-key": ADMIN_KEY },
+      body: JSON.stringify({ code: "LATE-0001", deviceName: "Late Kiosk" }),
+    });
+
+    // Straight after confirmation the app can still collect it.
+    const inWindow = await SELF.fetch("https://example.com/api/photobooth/pair/status/LATE-0001");
+    expect((await inWindow.json<{ deviceToken: string | null }>()).deviceToken).toBeTruthy();
+
+    // Wind the collection window back into the past, as it would be for someone coming back to a
+    // pairing code they saw on the photobooth's screen earlier.
+    await testEnv.DB
+      .prepare("UPDATE photobooth_pairing_codes SET expires_at = ? WHERE code = 'LATE-0001'")
+      .bind(new Date(Date.now() - 60_000).toISOString())
+      .run();
+
+    const tooLate = await SELF.fetch("https://example.com/api/photobooth/pair/status/LATE-0001");
+    const body = await tooLate.json<{ status: string; deviceToken: string | null }>();
+    expect(body.status).toBe("confirmed");
+    expect(body.deviceToken).toBeNull();
+
+    // ...and the token is wiped from the row, not merely withheld from the response.
+    const row = await testEnv.DB
+      .prepare("SELECT device_token FROM photobooth_pairing_codes WHERE code = 'LATE-0001'")
+      .first<{ device_token: string | null }>();
+    expect(row?.device_token).toBeNull();
+  });
+
+  it("refuses to serve a retention-expired photo's bytes before the cron has cleaned them up", async () => {
+    const deviceId = crypto.randomUUID();
+    const now = new Date().toISOString();
+    const past = new Date(Date.now() - 60_000).toISOString();
+
+    await testEnv.DB
+      .prepare("INSERT INTO photobooth_devices (id, name, token_hash, paired_at) VALUES (?, 'Expiry Fixture', 'unused-expiry', ?)")
+      .bind(deviceId, now)
+      .run();
+    await testEnv.ASSETS_BUCKET.put("photos/expired-fixture.jpg", new Uint8Array([7, 7, 7]));
+    await testEnv.DB
+      .prepare(
+        `INSERT INTO photobooth_photos (id, device_id, event_id, r2_key, content_type, status, download_token, created_at, uploaded_at, expires_at)
+         VALUES (?, ?, NULL, 'photos/expired-fixture.jpg', 'image/jpeg', 'uploaded', 'expired-token-1234', ?, ?, ?)`,
+      )
+      .bind(crypto.randomUUID(), deviceId, now, now, past)
+      .run();
+
+    // The page already refused; the file endpoint used to happily hand the bytes over anyway.
+    const page = await SELF.fetch("https://example.com/foto/expired-token-1234");
+    expect(page.status).toBe(410);
+
+    const file = await SELF.fetch("https://example.com/foto/expired-token-1234/file");
+    expect(file.status).toBe(410);
+  });
+
+  it("ignores an off-origin Referer when bouncing back from a gallery delete", async () => {
+    const cookie = await loginAsBoss();
+
+    const deviceId = crypto.randomUUID();
+    const photoId = crypto.randomUUID();
+    const now = new Date().toISOString();
+    await testEnv.DB
+      .prepare("INSERT INTO photobooth_devices (id, name, token_hash, paired_at) VALUES (?, 'Referer Fixture', 'unused-referer', ?)")
+      .bind(deviceId, now)
+      .run();
+    await testEnv.DB
+      .prepare(
+        `INSERT INTO photobooth_photos (id, device_id, event_id, r2_key, content_type, status, download_token, created_at, uploaded_at)
+         VALUES (?, ?, NULL, 'photos/referer-fixture.jpg', 'image/jpeg', 'uploaded', 'referer-token-1234', ?, ?)`,
+      )
+      .bind(photoId, deviceId, now, now)
+      .run();
+
+    const del = await SELF.fetch(`https://example.com/admin/gallery/${photoId}/delete`, {
+      method: "POST",
+      headers: { cookie, referer: "https://evil.example/admin/gallery" },
+      redirect: "manual",
+    });
+    expect(del.status).toBe(303);
+    expect(del.headers.get("location")).toBe("https://example.com/admin/gallery");
+  });
+
+  it("sends framing/CSP headers on admin pages", async () => {
+    const cookie = await loginAsBoss();
+    const res = await SELF.fetch("https://example.com/admin/stats", { headers: { cookie } });
+
+    expect(res.headers.get("x-frame-options")).toBe("DENY");
+    expect(res.headers.get("content-security-policy")).toContain("frame-ancestors 'none'");
+    // CORS is for the JSON device API only — it has no business on a cookie-authenticated page.
+    expect(res.headers.get("access-control-allow-origin")).toBeNull();
   });
 });

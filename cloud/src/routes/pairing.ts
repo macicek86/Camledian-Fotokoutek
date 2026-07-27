@@ -4,6 +4,12 @@ import { createId, createDownloadToken, sha256Hex } from "../lib/ids";
 import { requireAdminKey } from "../lib/auth";
 
 const PAIRING_CODE_TTL_MINUTES = 10;
+/** How long after confirmation the freshly minted device token stays collectable via
+ * GET /pair/status. The window restarts at confirmation time (see confirmPairingCode) so it doesn't
+ * matter how long the admin took to click "Potvrdit" — the app polls every 4s and picks the token up
+ * within seconds, and retries still work, but the code stops being a way to mint a device identity
+ * long after the fact. */
+const TOKEN_COLLECTION_MINUTES = 5;
 const PAIRING_CODE_PATTERN = /^[A-Z0-9]{4}-[A-Z0-9]{4}$/;
 
 /** POST /api/photobooth/pair/start — the Windows app generates the human-readable code locally
@@ -47,6 +53,16 @@ export async function pairStatus(request: IRequest, env: Env) {
   }
 
   if (row.status === "confirmed") {
+    // The token is only handed out inside the post-confirmation collection window. Without this the
+    // row kept serving a live device token forever, and the pairing code is shown on the photobooth's
+    // own screen — anyone who ever saw it could come back later and mint themselves a device identity.
+    if (new Date(row.expires_at).getTime() < Date.now()) {
+      if (row.device_token) {
+        await env.DB.prepare("UPDATE photobooth_pairing_codes SET device_token = NULL WHERE code = ?").bind(row.code).run();
+      }
+      return { status: "confirmed", deviceId: row.device_id, deviceToken: null };
+    }
+
     return { status: "confirmed", deviceId: row.device_id, deviceToken: row.device_token };
   }
 
@@ -84,11 +100,15 @@ export async function confirmPairingCode(env: Env, rawCode: string, deviceName: 
     .bind(deviceId, deviceName ?? null, tokenHash, now)
     .run();
 
+  // Restart the clock: expires_at now means "until when is the device token collectable", which is
+  // what pairStatus above enforces.
+  const collectableUntil = new Date(Date.now() + TOKEN_COLLECTION_MINUTES * 60_000).toISOString();
+
   await env.DB
     .prepare(
-      "UPDATE photobooth_pairing_codes SET status = 'confirmed', device_id = ?, device_token = ?, confirmed_at = ? WHERE code = ?",
+      "UPDATE photobooth_pairing_codes SET status = 'confirmed', device_id = ?, device_token = ?, confirmed_at = ?, expires_at = ? WHERE code = ?",
     )
-    .bind(deviceId, deviceToken, now, code)
+    .bind(deviceId, deviceToken, now, collectableUntil, code)
     .run();
 
   return { deviceId, confirmed: true };
@@ -99,7 +119,7 @@ export async function confirmPairingCode(env: Env, rawCode: string, deviceName: 
  * Human staff instead use the /admin/pair browser form, gated by a real login session — see
  * routes/adminAuth.ts and requireAdminSession. */
 export async function pairConfirm(request: Request, env: Env) {
-  const failure = requireAdminKey(request, env);
+  const failure = await requireAdminKey(request, env);
   if (failure) {
     throw new StatusError(failure.status, { error: failure.error });
   }

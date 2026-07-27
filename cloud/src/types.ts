@@ -1,13 +1,8 @@
-export interface Env {
-  DB: D1Database;
-  ASSETS_BUCKET: R2Bucket;
-
-  DEFAULT_PHOTO_RETENTION_DAYS: string;
-  GALLERY_BASE_URL: string;
-
-  // Secrets — set via `wrangler secret put`, never committed (see .env.example).
-  ADMIN_API_KEY?: string;
-}
+/** Bindings come from `wrangler types` (worker-configuration.d.ts), generated straight from
+ * wrangler.toml + .dev.vars — never hand-written, so it can't silently drift from what's actually
+ * deployed. Re-run `npx wrangler types` after adding or renaming any binding. Re-exported here so
+ * the rest of the code can keep importing `Env` from one place. */
+export type Env = Cloudflare.Env;
 
 export interface AuthedRequest extends Request {
   deviceId?: string;

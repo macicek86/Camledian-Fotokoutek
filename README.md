@@ -157,9 +157,11 @@ Applies local D1 migrations and starts `wrangler dev` on `http://localhost:8787`
   existing shop/POS/invoicing admin — see below). `/admin/pair`, `/admin/stats`, `/admin/gallery`,
   `/admin/users` all require being logged in here first.
 - First-time setup: create the first account with
-  `curl -X POST "http://localhost:8787/admin/setup?key=$ADMIN_API_KEY" -H 'content-type: application/json'
-  -d '{"username":"...","password":"..."}'` (password ≥ 8 chars), using the `ADMIN_API_KEY` from
-  `cloud/.dev.vars`. Refuses once any admin exists — add more accounts from `/admin/users` after
+  `curl -X POST "http://localhost:8787/admin/setup" -H "x-admin-key: $ADMIN_API_KEY"
+  -H 'content-type: application/json' -d '{"username":"...","password":"..."}'` (password ≥ 8 chars),
+  using the `ADMIN_API_KEY` from `cloud/.dev.vars`. The key goes in the `X-Admin-Key` header — it is
+  deliberately not accepted as a `?key=` query parameter, which would land it in access logs and
+  browser history. Refuses once any admin exists — add more accounts from `/admin/users` after
   logging in.
 
 **Privacy note:** the public gallery only ever resolves one photo at a time by its own long random

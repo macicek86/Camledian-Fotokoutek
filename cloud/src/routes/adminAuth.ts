@@ -3,7 +3,7 @@ import { renderAdminShell } from "../lib/adminLayout";
 import { clearAdminSessionCookie, createAdminSession, findAdminById, findAdminByUsername, requireAdminKey, requireAdminSession } from "../lib/auth";
 import { escapeHtml } from "../lib/html";
 import { createId, sha256Hex } from "../lib/ids";
-import { hashPassword, verifyPassword } from "../lib/password";
+import { DUMMY_PASSWORD_HASH, hashPassword, verifyPassword } from "../lib/password";
 import type { AdminRow, Env } from "../types";
 
 function html(body: string, status = 200): Response {
@@ -66,7 +66,10 @@ export async function loginSubmit(request: Request, env: Env) {
   const password = String(formData.get("password") ?? "");
 
   const admin = await findAdminByUsername(env, username);
-  const valid = admin ? await verifyPassword(password, admin.password_hash) : false;
+  // Always run the full PBKDF2 derivation, even for a username that doesn't exist — skipping it
+  // would make "no such user" measurably faster than "wrong password" and turn the login form into
+  // a username oracle.
+  const valid = await verifyPassword(password, admin?.password_hash ?? DUMMY_PASSWORD_HASH);
 
   if (!admin || !valid) {
     return Response.redirect(new URL("/admin/login?error=1", request.url).toString(), 303);
@@ -100,7 +103,7 @@ export async function logout(request: Request, env: Env) {
  * use the logged-in "Přidat admina" form at /admin/users instead. Intended to be called once with
  * curl/httpie right after a fresh deploy, not from a browser. */
 export async function setupAdmin(request: Request, env: Env) {
-  const failure = requireAdminKey(request, env);
+  const failure = await requireAdminKey(request, env);
   if (failure) {
     throw new StatusError(failure.status, { error: failure.error });
   }
@@ -128,12 +131,15 @@ export async function setupAdmin(request: Request, env: Env) {
   return { ok: true, id, username };
 }
 
-const NOTICES: Record<string, string> = {
-  "password-changed": "Heslo bylo změněno.",
-  "password-reset": "Heslo účtu bylo resetováno.",
-  "user-deleted": "Účet byl smazán.",
-  "user-created": "Účet byl vytvořen.",
-};
+// A Map rather than an object literal: `NOTICES["constructor"]` on a plain object returns a function
+// off the prototype chain, which then blew up in escapeHtml() (functions have no .replace) — i.e.
+// /admin/users?notice=constructor was a free 500.
+const NOTICES = new Map<string, string>([
+  ["password-changed", "Heslo bylo změněno."],
+  ["password-reset", "Heslo účtu bylo resetováno."],
+  ["user-deleted", "Účet byl smazán."],
+  ["user-created", "Účet byl vytvořen."],
+]);
 
 interface UsersPageState {
   currentAdminId: string;
@@ -222,7 +228,7 @@ export async function usersPage(request: Request, env: Env) {
     usersPageHtml(admins, {
       currentAdminId: session.adminId,
       currentUsername: self?.username ?? "",
-      notice: noticeCode ? NOTICES[noticeCode] : undefined,
+      notice: noticeCode ? NOTICES.get(noticeCode) : undefined,
     }),
   );
 }

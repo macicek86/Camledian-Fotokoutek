@@ -3,10 +3,17 @@ import type { Env, PhotoRow } from "../types";
 import { requireDeviceAuth } from "../lib/auth";
 import { createDownloadToken, createId } from "../lib/ids";
 
-const ALLOWED_CONTENT_TYPES: Record<string, string> = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-};
+// A Map, not an object literal: `ALLOWED_CONTENT_TYPES["constructor"]` on a plain object walks the
+// prototype chain and returns a function, which would sail past the `if (!extension)` check below.
+const ALLOWED_CONTENT_TYPES = new Map<string, string>([
+  ["image/jpeg", "jpg"],
+  ["image/png", "png"],
+]);
+
+/** Used when DEFAULT_PHOTO_RETENTION_DAYS is missing or not a number — without a fallback,
+ * `Number(undefined)` is NaN, `NaN > 0` is false, and photos would silently be stored with no expiry
+ * at all, i.e. kept forever. */
+const FALLBACK_RETENTION_DAYS = 30;
 
 /** POST /api/photobooth/photos — registers an upload and returns the Worker-hosted PUT URL below
  * (spec §34, §39). The device PUTs the file straight through the Worker's R2 binding — no separate
@@ -23,7 +30,7 @@ export async function createPhoto(request: IRequest, env: Env) {
     .json<{ eventId?: string; contentType?: string }>()
     .catch(() => ({}) as { eventId?: string; contentType?: string });
   const contentType = body.contentType ?? "image/jpeg";
-  const extension = ALLOWED_CONTENT_TYPES[contentType];
+  const extension = ALLOWED_CONTENT_TYPES.get(contentType);
   if (!extension) {
     throw new StatusError(400, { error: `Unsupported contentType '${contentType}'. Use image/jpeg or image/png.` });
   }
@@ -31,7 +38,8 @@ export async function createPhoto(request: IRequest, env: Env) {
   const photoId = createId();
   const r2Key = `photos/${auth.deviceId}/${photoId}.${extension}`;
   const now = new Date();
-  const retentionDays = Number(env.DEFAULT_PHOTO_RETENTION_DAYS);
+  const configured = Number(env.DEFAULT_PHOTO_RETENTION_DAYS);
+  const retentionDays = Number.isFinite(configured) ? configured : FALLBACK_RETENTION_DAYS;
   const expiresAt = retentionDays > 0 ? new Date(now.getTime() + retentionDays * 86_400_000).toISOString() : null;
 
   await env.DB
@@ -65,6 +73,13 @@ export async function uploadPhoto(request: IRequest, env: Env) {
 
   if (!photo || photo.device_id !== auth.deviceId) {
     throw new StatusError(404, { error: "Photo not found." });
+  }
+
+  // Upload slots are single-use: once a photo is uploaded its download token is already out in the
+  // world on a QR code, so letting a later PUT swap the bytes underneath that link would silently
+  // change what a guest sees. Retention-expired rows are equally off limits.
+  if (photo.status !== "pending-upload") {
+    throw new StatusError(409, { error: `Photo is already '${photo.status}' and can no longer be uploaded to.` });
   }
 
   if (!request.body) {

@@ -80,18 +80,27 @@ export async function galleryFile(request: IRequest, env: Env) {
     return new Response("Not found", { status: 404 });
   }
 
+  // Same retention check galleryPage does. Without it the bytes stayed downloadable through this
+  // direct URL until the nightly cron got round to deleting them — up to ~24h past the retention
+  // deadline the page itself already refuses to serve.
+  if (photo.expires_at && new Date(photo.expires_at).getTime() < Date.now()) {
+    return new Response("Gone", { status: 410 });
+  }
+
   const object = await env.ASSETS_BUCKET.get(photo.r2_key);
   if (!object) {
     return new Response("Not found", { status: 404 });
   }
 
   const url = new URL(request.url);
+  const contentType = object.httpMetadata?.contentType ?? photo.content_type;
   const headers = new Headers({
-    "content-type": object.httpMetadata?.contentType ?? photo.content_type,
+    "content-type": contentType,
     "cache-control": "private, max-age=3600",
   });
   if (url.searchParams.has("download")) {
-    headers.set("content-disposition", `attachment; filename="camledian-photobooth-${photo.id}.jpg"`);
+    const extension = contentType === "image/png" ? "png" : "jpg";
+    headers.set("content-disposition", `attachment; filename="camledian-photobooth-${photo.id}.${extension}"`);
   }
 
   return new Response(object.body, { headers });

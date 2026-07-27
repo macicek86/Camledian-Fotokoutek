@@ -1,5 +1,5 @@
 import type { AdminRow, Env } from "../types";
-import { createDownloadToken, sha256Hex } from "./ids";
+import { createDownloadToken, sha256Hex, timingSafeEquals } from "./ids";
 
 export const ADMIN_SESSION_COOKIE = "admin_session";
 const SESSION_TTL_HOURS = 12;
@@ -48,16 +48,19 @@ export async function requireDeviceAuth(request: Request, env: Env): Promise<Dev
  * first admin account (`POST /admin/setup`) and the device-pairing API
  * (`POST /api/photobooth/pair/confirm`), which a future Camledian-side integration could call
  * directly without a browser session. Human staff use the real login at `/admin/login` instead —
- * see requireAdminSession below. */
-export function requireAdminKey(request: Request, env: Env): AuthFailure | null {
+ * see requireAdminSession below.
+ *
+ * Header-only on purpose: the key used to be accepted as a `?key=` query parameter too, which put
+ * it into Cloudflare's HTTP access logs, browser history and any Referer header the page emitted.
+ * Callers must send it as `X-Admin-Key`. */
+export async function requireAdminKey(request: Request, env: Env): Promise<AuthFailure | null> {
   if (!env.ADMIN_API_KEY) {
     return { ok: false, status: 503, error: "ADMIN_API_KEY is not configured on this deployment." };
   }
 
-  const url = new URL(request.url);
-  const provided = request.headers.get("x-admin-key") ?? url.searchParams.get("key");
-  if (provided !== env.ADMIN_API_KEY) {
-    return { ok: false, status: 401, error: "Invalid admin key." };
+  const provided = request.headers.get("x-admin-key");
+  if (!provided || !(await timingSafeEquals(provided, env.ADMIN_API_KEY))) {
+    return { ok: false, status: 401, error: "Invalid admin key. Send it in the X-Admin-Key header." };
   }
 
   return null;

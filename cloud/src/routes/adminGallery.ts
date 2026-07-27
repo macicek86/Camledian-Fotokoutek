@@ -156,7 +156,20 @@ export async function deleteGalleryPhoto(request: IRequest, env: Env) {
     await expirePhoto(env, photo);
   }
 
+  // "Bounce back to whichever admin page the delete came from", but the origin has to match too:
+  // checking only the path let https://evil.example/admin/x through as a redirect target.
+  return Response.redirect(safeAdminReferer(request) ?? new URL("/admin/gallery", request.url).toString(), 303);
+}
+
+function safeAdminReferer(request: Request): string | null {
   const referer = request.headers.get("referer");
-  const redirectTo = referer && new URL(referer).pathname.startsWith("/admin/") ? referer : new URL("/admin/gallery", request.url).toString();
-  return Response.redirect(redirectTo, 303);
+  if (!referer) return null;
+
+  try {
+    const target = new URL(referer);
+    const self = new URL(request.url);
+    return target.origin === self.origin && target.pathname.startsWith("/admin/") ? target.toString() : null;
+  } catch {
+    return null;
+  }
 }

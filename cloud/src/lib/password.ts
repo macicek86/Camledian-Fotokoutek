@@ -1,6 +1,14 @@
-const PBKDF2_ITERATIONS = 100_000;
+// OWASP's current floor for PBKDF2-HMAC-SHA256. The count is stored inside each hash (see
+// hashPassword), so raising it again later won't lock existing accounts out — they keep verifying
+// against whatever they were created with.
+const PBKDF2_ITERATIONS = 600_000;
 const SALT_BYTES = 16;
 const HASH_BITS = 256;
+
+/** A syntactically valid hash of a value nobody knows. Verifying against this costs exactly as much
+ * as verifying against a real account's hash, which is what the login route needs in order not to
+ * answer faster for unknown usernames (see routes/adminAuth.ts loginSubmit). */
+export const DUMMY_PASSWORD_HASH = `pbkdf2$${PBKDF2_ITERATIONS}$${"00".repeat(SALT_BYTES)}$${"00".repeat(HASH_BITS / 8)}`;
 
 function toHex(bytes: ArrayBuffer | Uint8Array): string {
   const view = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);

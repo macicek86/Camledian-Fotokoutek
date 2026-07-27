@@ -3,13 +3,9 @@ main = "src/index.ts"
 compatibility_date = "2026-07-01"
 compatibility_flags = ["nodejs_compat"]
 
-# Bound to its own subdomain, NOT camledian.art/* — that zone already routes to a separate
-# (e-shop) Worker, and Workers routes are matched by path pattern on a shared zone, so overlapping
-# patterns on the same domain can shadow/conflict with the existing site. A dedicated subdomain is a
-# completely independent route with zero risk of collision.
-[[routes]]
-pattern = "fotokoutek.camledian.art"
-custom_domain = true
+# Custom domain fotokoutek.camledian.art is already bound on the Cloudflare side (dashboard),
+# not declared here — the deploy API token isn't scoped for Zone > Workers Routes on camledian.art,
+# and the binding doesn't need to be re-asserted on every deploy anyway.
 
 # --- D1 (spec §33) ---
 # Create with: wrangler d1 create camledian-photobooth
@@ -36,6 +32,13 @@ directory = "./public"
 [triggers]
 crons = ["0 3 * * *"]
 
+# Workers Logs — without this, console.error() from the router's catch handler and from the nightly
+# cron goes nowhere, so a failing cleanup run would be completely invisible.
+[observability]
+enabled = true
+[observability.logs]
+head_sampling_rate = 1
+
 [vars]
 # Non-secret defaults; override per-environment below or via `wrangler secret put`.
 DEFAULT_PHOTO_RETENTION_DAYS = "30"
@@ -48,5 +51,22 @@ GALLERY_BASE_URL = "https://fotokoutek.camledian.art/foto"
 # Photo uploads go straight through the Worker's own R2 binding (ASSETS_BUCKET above) rather than a
 # presigned S3-API URL, so no separate R2 API token/secrets are needed here.
 
+# Named environments do NOT inherit vars/d1_databases/r2_buckets/assets from the top level — they
+# have to be repeated here, or `--env development` would run against a Worker with no DB and no
+# bucket at all. (`wrangler types` caught this: it typed DB/ASSETS_BUCKET as optional because they
+# were missing from this environment.)
 [env.development]
 vars = { DEFAULT_PHOTO_RETENTION_DAYS = "30", GALLERY_BASE_URL = "http://localhost:8787/foto" }
+
+[[env.development.d1_databases]]
+binding = "DB"
+database_name = "camledian-photobooth"
+database_id = "89aaefef-3c27-42cb-bf30-3a7d4ce089d2"
+migrations_dir = "migrations"
+
+[[env.development.r2_buckets]]
+binding = "ASSETS_BUCKET"
+bucket_name = "camledian-photobooth-assets"
+
+[env.development.assets]
+directory = "./public"

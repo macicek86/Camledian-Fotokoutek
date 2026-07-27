@@ -6,8 +6,5 @@
 # has its own accounts + sessions (spec §31/§36/§44/§56).
 ADMIN_API_KEY=change-me-to-a-random-string
 
-# R2 S3-compatible API token, used to create presigned photo-upload URLs (spec §34).
-# Create one at Cloudflare dashboard > R2 > Manage R2 API Tokens.
-R2_ACCOUNT_ID=your-cloudflare-account-id
-R2_ACCESS_KEY_ID=your-r2-access-key-id
-R2_SECRET_ACCESS_KEY=your-r2-secret-access-key
+# No R2 API token is needed: photo uploads go through the Worker's own ASSETS_BUCKET binding
+# (see routes/photos.ts), not through presigned S3-API URLs.
