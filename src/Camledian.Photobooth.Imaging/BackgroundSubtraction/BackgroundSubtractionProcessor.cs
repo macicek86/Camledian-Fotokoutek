@@ -94,27 +94,38 @@ public static class BackgroundSubtractionProcessor
 
     /// <summary>
     /// Per-channel factor that maps the reference photo onto the current frame's exposure/white
-    /// balance, estimated as the *median* frame/reference ratio over a subsample of the image.
-    /// The median is the whole point: the subject's own pixels have ratios all over the place, but
-    /// as long as they don't cover most of the frame they sit in the tails and the middle value
-    /// still describes the background's shift. Falls back to 1.0 (no compensation) when too few
-    /// pixels are bright enough to give a meaningful ratio — a nearly black reference photo cannot
-    /// tell us anything about exposure.
+    /// balance.
+    ///
+    /// The estimate has to answer "how did the *background* change" while most of what it can see may
+    /// well be a guest standing right up against the lens. Two ideas do the work:
+    ///
+    /// 1. Background pixels all moved by the same factor, so they form tight clusters in the ratio
+    ///    histogram, while the subject's own colours scatter. Cluster peaks are therefore the
+    ///    estimate — never the median, which starts describing the subject the moment they cover
+    ///    half the frame (measured: 35 % of the background then wrongly kept).
+    /// 2. Nothing is compensated unless that peak holds a tenth of the sampled pixels. Below that
+    ///    there is no coherent "unchanged part of the scene" to measure against, and doing nothing is
+    ///    a known, mild failure where guessing is not.
     /// </summary>
     private static (double R, double G, double B) EstimateChannelGain(Image<Rgba32> frame, Image<Rgba32> reference)
     {
         // A ratio computed from near-black pixels is dominated by sensor noise, so ignore those.
         const int MinReferenceLevel = 16;
-        const int MinSamples = 64;
+        const int MinSamples = 256;
         // Beyond ~2x the "drift" is not drift any more (lights switched off, lens covered); clamping
         // stops one pathological frame from rescaling the reference into nonsense.
         const double MinGain = 0.5;
         const double MaxGain = 2.0;
+        const double BinWidth = 0.01;
+        // The winning cluster has to be a real population, not a handful of pixels that agreed.
+        const double MinPeakShare = 0.10;
+        // How far the three channel gains may disagree and still be lighting drift rather than a
+        // flat-coloured object. Exposure moves them together (spread 1.0); a strong warm/cool shift
+        // is maybe 1.15.
+        const double MaxChannelSpread = 1.25;
 
         var step = Math.Max(1, (int)Math.Sqrt(frame.Width * (long)frame.Height / 10_000.0));
-        var ratiosR = new List<double>();
-        var ratiosG = new List<double>();
-        var ratiosB = new List<double>();
+        var samples = new List<Sample>();
 
         frame.ProcessPixelRows(reference, (frameAccessor, refAccessor) =>
         {
@@ -126,39 +137,109 @@ public static class BackgroundSubtractionProcessor
                 {
                     var f = frameRow[x];
                     var r = refRow[x];
-                    if (r.R >= MinReferenceLevel)
+                    if (r.R < MinReferenceLevel || r.G < MinReferenceLevel || r.B < MinReferenceLevel)
                     {
-                        ratiosR.Add(f.R / (double)r.R);
+                        continue;
                     }
 
-                    if (r.G >= MinReferenceLevel)
-                    {
-                        ratiosG.Add(f.G / (double)r.G);
-                    }
-
-                    if (r.B >= MinReferenceLevel)
-                    {
-                        ratiosB.Add(f.B / (double)r.B);
-                    }
+                    // Cluster on one number (luma) so all three channels are estimated from the same
+                    // set of pixels — otherwise a colour cast could pick a different "background" per
+                    // channel and tint the comparison.
+                    var refLuma = (0.299 * r.R) + (0.587 * r.G) + (0.114 * r.B);
+                    var frameLuma = (0.299 * f.R) + (0.587 * f.G) + (0.114 * f.B);
+                    samples.Add(new Sample(
+                        frameLuma / refLuma,
+                        f.R / (double)r.R,
+                        f.G / (double)r.G,
+                        f.B / (double)r.B));
                 }
             }
         });
 
-        return (Median(ratiosR), Median(ratiosG), Median(ratiosB));
-
-        static double Median(List<double> values)
+        if (samples.Count < MinSamples)
         {
-            if (values.Count < MinSamples)
-            {
-                return 1.0;
-            }
-
-            values.Sort();
-            var middle = values.Count / 2;
-            var median = values.Count % 2 == 0
-                ? (values[middle - 1] + values[middle]) / 2.0
-                : values[middle];
-            return Math.Clamp(median, MinGain, MaxGain);
+            return (1.0, 1.0, 1.0);
         }
+
+        // Histogram the luma ratios and take the fullest bin (plus its neighbours, so a cluster
+        // straddling a bin boundary isn't split in half).
+        var bins = new Dictionary<int, int>();
+        foreach (var sample in samples)
+        {
+            if (sample.Luma is >= MinGain and <= MaxGain)
+            {
+                var bin = (int)(sample.Luma / BinWidth);
+                bins[bin] = bins.GetValueOrDefault(bin) + 1;
+            }
+        }
+
+        if (bins.Count == 0)
+        {
+            return (1.0, 1.0, 1.0);
+        }
+
+        var peakBin = int.MinValue;
+        var peakCount = 0;
+        foreach (var (bin, _) in bins)
+        {
+            var count = bins.GetValueOrDefault(bin - 1) + bins[bin] + bins.GetValueOrDefault(bin + 1);
+            if (count > peakCount)
+            {
+                peakCount = count;
+                peakBin = bin;
+            }
+        }
+
+        if (peakBin == int.MinValue || peakCount < samples.Count * MinPeakShare)
+        {
+            return (1.0, 1.0, 1.0);
+        }
+
+        if (AverageOverCluster(samples, peakBin, BinWidth) is not { } gain)
+        {
+            return (1.0, 1.0, 1.0);
+        }
+
+        // Sanity check on what was found: a camera re-exposing moves all three channels by nearly the
+        // same factor, and a white-balance shift tilts them only mildly. A cluster whose channels
+        // disagree wildly is not lighting drift — it is a large flat surface that happens to be one
+        // colour, i.e. the guest's plain T-shirt filling the frame. Scaling the reference by *that*
+        // would map it onto the shirt, turning the guest into background and the room into foreground.
+        var spread = Math.Max(gain.R, Math.Max(gain.G, gain.B)) / Math.Max(1e-6, Math.Min(gain.R, Math.Min(gain.G, gain.B)));
+        if (spread > MaxChannelSpread)
+        {
+            return (1.0, 1.0, 1.0);
+        }
+
+        return (Math.Clamp(gain.R, MinGain, MaxGain),
+                Math.Clamp(gain.G, MinGain, MaxGain),
+                Math.Clamp(gain.B, MinGain, MaxGain));
+    }
+
+    /// <summary>One sampled pixel's frame/reference ratio: the luma ratio the clustering runs on,
+    /// plus the per-channel ratios averaged once a cluster has been picked.</summary>
+    private readonly record struct Sample(double Luma, double R, double G, double B);
+
+    /// <summary>Mean per-channel ratio over the samples inside one histogram peak (the peak bin plus
+    /// a bin either side). Null when the peak turned out to be empty after the widening.</summary>
+    private static (double R, double G, double B)? AverageOverCluster(List<Sample> samples, int peakBin, double binWidth)
+    {
+        var low = (peakBin - 1) * binWidth;
+        var high = (peakBin + 2) * binWidth;
+
+        double sumR = 0, sumG = 0, sumB = 0;
+        var used = 0;
+        foreach (var sample in samples)
+        {
+            if (sample.Luma >= low && sample.Luma < high)
+            {
+                sumR += sample.R;
+                sumG += sample.G;
+                sumB += sample.B;
+                used++;
+            }
+        }
+
+        return used == 0 ? null : (sumR / used, sumG / used, sumB / used);
     }
 }

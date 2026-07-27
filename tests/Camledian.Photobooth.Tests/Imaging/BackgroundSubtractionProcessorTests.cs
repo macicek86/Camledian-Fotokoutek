@@ -153,6 +153,26 @@ public class BackgroundSubtractionProcessorTests
         Assert.True(mask[(20 * 64) + 55] < 0.05f, "the drifted background must remain background");
     }
 
+    /// <summary>
+    /// A guest standing right up against the lens: the drift estimate can only see a sliver of real
+    /// background, and the first version of it took the median of everything — which described the
+    /// guest, rescaled the reference to match them, and made the actual background stop matching
+    /// (35 % of it was then wrongly kept). The estimate must recognise it has nothing to measure and
+    /// leave the reference alone.
+    /// </summary>
+    [Fact]
+    public void SubjectFillingMostOfTheFrameDoesNotBreakTheBackground()
+    {
+        using var reference = Solid(64, new Rgba32(90, 100, 110));
+        using var frame = Solid(64, new Rgba32(90, 100, 110));
+        Fill(frame, new Rectangle(0, 0, 64, 52), new Rgba32(210, 180, 150)); // subject over ~81 % of the frame
+
+        var mask = BackgroundSubtractionProcessor.Apply(frame, reference, DefaultSettings());
+
+        Assert.True(mask[(20 * 64) + 32] > 0.95f, "the subject must be foreground");
+        Assert.True(mask[(62 * 64) + 32] < 0.05f, "the strip of real background must stay background");
+    }
+
     /// <summary>A prop is just "something that wasn't in the reference photo" — the method has no
     /// idea what it is, and that is exactly why it keeps it when a person-shaped model wouldn't.</summary>
     [Fact]
