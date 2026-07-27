@@ -52,6 +52,17 @@ public class DevicePairingService(CloudApiClient apiClient, DeviceRepository dev
                         logger.LogInformation("Device paired successfully: {DeviceId}", status.DeviceId);
                         return new PairingResult(PairingOutcome.Confirmed, status.DeviceId);
 
+                    // Confirmed, but the backend no longer hands the token over: it only stays
+                    // collectable for a few minutes after an admin confirms the code, so that a code
+                    // seen on this screen can't be redeemed for a device identity later. We only get
+                    // here if polling was interrupted long enough to miss that window (app restart,
+                    // network outage), and the only way forward is a fresh code — so treat it like an
+                    // expiry rather than polling on until the outer timeout with no explanation.
+                    case "confirmed":
+                        logger.LogWarning(
+                            "Pairing code {Code} was confirmed but its device token is no longer collectable; a new code is needed.", code);
+                        return new PairingResult(PairingOutcome.Expired, null);
+
                     case "expired":
                         return new PairingResult(PairingOutcome.Expired, null);
 
