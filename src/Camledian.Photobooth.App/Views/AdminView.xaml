@@ -102,6 +102,9 @@
                             <Label Content="FPS" />
                             <TextBox Text="{Binding Settings.Camera.RequestedFps}" />
                             <CheckBox Content="Použít Mock kameru, pokud není fyzická k dispozici" IsChecked="{Binding Settings.Camera.UseMockIfUnavailable}" />
+                            <CheckBox Content="Zamknout expozici a vyvážení bílé (doporučeno)" IsChecked="{Binding Settings.Camera.LockExposureAndWhiteBalance}" Margin="0,8,0,0" />
+                            <TextBlock Text="Kamera se po spuštění nechá změřit scénu a pak se zafixuje. Bez toho si přeměří obraz pokaždé, když někdo vstoupí před objektiv, a odečítání pozadí podle referenční fotky přestane sedět. Projeví se po restartu aplikace."
+                                       Foreground="{StaticResource MutedTextBrush}" TextWrapping="Wrap" Margin="0,4,0,0" />
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>
@@ -158,6 +161,16 @@
 
                             <Label Content="{Binding Settings.BackgroundSubtraction.FeatherPixels}" ContentStringFormat="Feather (px): {0:0.0}" />
                             <Slider Minimum="0" Maximum="20" Value="{Binding Settings.BackgroundSubtraction.FeatherPixels}" />
+
+                            <Label Content="{Binding Settings.BackgroundSubtraction.FillHolesPixels}" ContentStringFormat="Zacelení děr (px): {0:0.0}" />
+                            <Slider Minimum="0" Maximum="10" Value="{Binding Settings.BackgroundSubtraction.FillHolesPixels}" />
+                            <TextBlock Text="Zacelí díry, které vzniknou tam, kde má někdo oblečení v barvě pozadí za sebou. Nikdy nic neubírá, takže tenké rekvizity ani prsty tím nezmizí — příliš velká hodnota ale slepí i skutečné mezery, třeba mezi paží a tělem."
+                                       Foreground="{StaticResource MutedTextBrush}" TextWrapping="Wrap" Margin="0,4,0,12" />
+
+                            <CheckBox Content="Dorovnávat kolísání světla proti referenci (doporučeno)"
+                                      IsChecked="{Binding Settings.BackgroundSubtraction.CompensateLightingDrift}" />
+                            <TextBlock Text="Přepočítá jas a barvu referenční fotky na aktuální snímek, takže změna expozice nebo světla v sále neudělá z celého obrazu popředí."
+                                       Foreground="{StaticResource MutedTextBrush}" TextWrapping="Wrap" Margin="0,4,0,0" />
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>
@@ -336,7 +349,9 @@
                         <StackPanel Margin="16" MaxWidth="640" HorizontalAlignment="Left">
                             <TextBlock Text="{Binding DiagCameraStatus, StringFormat='Kamera: {0}'}" Foreground="{StaticResource TextBrush}" Margin="0,0,0,6" />
                             <TextBlock Text="{Binding DiagPreviewFps, StringFormat='Preview FPS: {0:0.0}'}" Foreground="{StaticResource TextBrush}" Margin="0,0,0,6" />
+                            <TextBlock Text="{Binding DiagExposureLock, StringFormat='Expozice: {0}'}" Foreground="{StaticResource TextBrush}" TextWrapping="Wrap" Margin="0,0,0,6" />
                             <TextBlock Text="{Binding DiagChromaOrAiMs, StringFormat='Green screen / AI: {0:0.0} ms'}" Foreground="{StaticResource TextBrush}" Margin="0,0,0,6" />
+                            <TextBlock Text="{Binding DiagAiModel, StringFormat='AI model: {0}'}" Foreground="{StaticResource TextBrush}" TextWrapping="Wrap" Margin="0,0,0,6" />
                             <TextBlock Text="{Binding DiagCompositionMs, StringFormat='Kompozice: {0:0.0} ms'}" Foreground="{StaticResource TextBrush}" Margin="0,0,0,6" />
                             <TextBlock Text="{Binding DiagPrinterStatus, StringFormat='Tiskárna: {0}'}" Foreground="{StaticResource TextBrush}" Margin="0,0,0,6" />
                             <TextBlock Text="{Binding DiagCloudStatus, StringFormat='Cloud: {0}'}" Foreground="{StaticResource TextBrush}" Margin="0,0,0,6" />

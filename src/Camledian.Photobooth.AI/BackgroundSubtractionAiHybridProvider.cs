@@ -34,10 +34,16 @@ public class BackgroundSubtractionAiHybridProvider(
         var subtractionMask = backgroundSubtraction.TryComputeMask(frame)
             ?? throw new InvalidOperationException("No background-subtraction reference photo captured yet.");
 
+        // A mask the model had no confidence in is amplified noise; taking max() with it would smear
+        // random blobs of background back into the photo. Dropping the AI's vote leaves the
+        // subtraction mask in charge, which is the better of the two here anyway — it keeps whatever
+        // wasn't in the reference photo, props included, without needing to recognise it.
+        var aiWeight = aiProvider.LastMaskWasLowConfidence ? 0f : AiDiscount;
+
         var combined = new float[subtractionMask.Length];
         for (var i = 0; i < combined.Length; i++)
         {
-            combined[i] = Math.Max(subtractionMask[i], aiMask[i] * AiDiscount);
+            combined[i] = Math.Max(subtractionMask[i], aiMask[i] * aiWeight);
         }
 
         BoxBlur.Apply(combined, frame.Width, frame.Height, EdgeRefinementPixels);

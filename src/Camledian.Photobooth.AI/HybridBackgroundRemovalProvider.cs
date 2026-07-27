@@ -59,10 +59,14 @@ public class HybridBackgroundRemovalProvider(
         // back its own raw mask — this is the copy of the frame the caller actually keeps.
         var chromaMask = ChromaKeyProcessor.Apply(frame, getChromaSettings());
 
+        // See BackgroundSubtractionAiHybridProvider: an inference the model had no confidence in gets
+        // no vote, leaving the (always available) chroma mask to decide on its own.
+        var aiWeight = aiProvider.LastMaskWasLowConfidence ? 0f : AiDiscount;
+
         var combined = new float[chromaMask.Length];
         for (var i = 0; i < combined.Length; i++)
         {
-            combined[i] = Math.Max(chromaMask[i], aiMask[i] * AiDiscount);
+            combined[i] = Math.Max(chromaMask[i], aiMask[i] * aiWeight);
         }
 
         BoxBlur.Apply(combined, frame.Width, frame.Height, EdgeRefinementPixels);

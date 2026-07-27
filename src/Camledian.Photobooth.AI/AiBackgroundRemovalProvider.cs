@@ -33,6 +33,7 @@ public class AiBackgroundRemovalProvider : IBackgroundRemovalService, IDisposabl
     private int _lastMaskWidth;
     private int _lastMaskHeight;
     private DateTime _lastInferenceUtc = DateTime.MinValue;
+    private bool _loggedInputSizeOverride;
 
     public AiBackgroundRemovalProvider(Func<AiSettings> getSettings, ILogger<AiBackgroundRemovalProvider> logger)
     {
@@ -49,6 +50,18 @@ public class AiBackgroundRemovalProvider : IBackgroundRemovalService, IDisposabl
     /// <summary>Which model actually served the most recent inference — useful on the Diagnostics
     /// tab to confirm the final render really did use the heavier model, not a silent fallback.</summary>
     public string? LastModelPathUsed { get; private set; }
+
+    /// <summary>True when a final-quality render had to fall back to the small preview model because
+    /// the heavier one isn't on disk. That fallback costs real quality — the preview model chops
+    /// hands and arms off, and on a frame with a bright prop (a sparkler, a lit sign) it will happily
+    /// decide the prop is the subject and cut the person away — so it must be visible, not just
+    /// logged at Debug.</summary>
+    public bool LastRenderFellBackToPreviewModel { get; private set; }
+
+    /// <summary>True when the most recent inference produced an almost flat saliency map, i.e. the
+    /// model separated nothing. Combiners use this to drop the AI's vote instead of letting a mask
+    /// made of amplified noise win.</summary>
+    public bool LastMaskWasLowConfidence { get; private set; }
 
     public Task<float[]> ApplyAsync(Image<Rgba32> frame, BackgroundRemovalOptions options, CancellationToken cancellationToken = default)
     {
@@ -91,19 +104,29 @@ public class AiBackgroundRemovalProvider : IBackgroundRemovalService, IDisposabl
     private float[] RunInference(Image<Rgba32> frame, AiSettings settings, bool useFinalQualityModel)
     {
         var session = GetOrCreateSession(settings, useFinalQualityModel);
-        var inputSize = settings.InputSize;
+        var inputName = session.InputMetadata.Keys.First();
+        var inputSize = ResolveInputSize(session, inputName, settings);
 
         using var resized = frame.Clone(ctx => ctx.Resize(inputSize, inputSize));
         var inputTensor = AiPreprocessing.ToNormalizedTensor(resized);
 
-        var inputName = session.InputMetadata.Keys.First();
+        // U-2-Net exports seven outputs (the fused d0 plus six side outputs from progressively
+        // coarser decoder stages). The fused one is first, which is what rembg uses too.
         var outputName = session.OutputMetadata.Keys.First();
         using var results = session.Run(
             [NamedOnnxValue.CreateFromTensor(inputName, inputTensor)],
             [outputName]);
 
         var outputTensor = results.First().AsTensor<float>();
-        var rawMask = AiPreprocessing.ExtractAndNormalizeMask(outputTensor, inputSize, inputSize);
+        var rawMask = AiPreprocessing.ExtractAndNormalizeMask(outputTensor, inputSize, inputSize, out var lowConfidence);
+        LastMaskWasLowConfidence = lowConfidence;
+        if (lowConfidence)
+        {
+            _logger.LogWarning(
+                "AI inference produced an almost flat saliency map for a {W}x{H} frame — the model found nothing " +
+                "it could separate (typically a dark, noisy or heavily backlit frame). Background removal is being " +
+                "skipped for this frame rather than keying it on noise.", frame.Width, frame.Height);
+        }
 
         var upscaled = AiPreprocessing.ResizeMask(rawMask, inputSize, inputSize, frame.Width, frame.Height);
 
@@ -114,6 +137,14 @@ public class AiBackgroundRemovalProvider : IBackgroundRemovalService, IDisposabl
 
     private void ApplyMaskToFrame(Image<Rgba32> frame, float[] mask, AiSettings settings)
     {
+        // A mask the model had no confidence in would dissolve the guests into the background. A
+        // photo that still has the room in it is a far better failure than a photo of nobody, so
+        // leave the frame untouched and let the operator see something is wrong.
+        if (LastMaskWasLowConfidence)
+        {
+            return;
+        }
+
         // The model output is already a continuous 0-1 saliency confidence, so it's used directly as
         // alpha; PreviewMaskThreshold only zeroes out low-confidence noise instead of letting faint
         // background specks show up as a ghosting halo.
@@ -135,6 +166,34 @@ public class AiBackgroundRemovalProvider : IBackgroundRemovalService, IDisposabl
         });
     }
 
+    /// <summary>
+    /// The square size to feed the model. Most exports — including both U-2-Net files this app ships
+    /// with — declare a fixed input shape (1x3x320x320), and handing such a model anything else just
+    /// fails at Run() time; the configured <see cref="AiSettings.InputSize"/> is therefore only
+    /// honoured when the model actually has a dynamic axis. That keeps "I typed 512 into Admin" from
+    /// breaking capture, while letting a swapped-in model with dynamic axes use the bigger size.
+    /// </summary>
+    private int ResolveInputSize(InferenceSession session, string inputName, AiSettings settings)
+    {
+        var dimensions = session.InputMetadata[inputName].Dimensions;
+        // NCHW: a fixed spatial axis is a positive number, a dynamic one is -1.
+        var declared = dimensions.Length >= 4 ? dimensions[^1] : -1;
+        if (declared <= 0)
+        {
+            return settings.InputSize;
+        }
+
+        if (declared != settings.InputSize && !_loggedInputSizeOverride)
+        {
+            _loggedInputSizeOverride = true;
+            _logger.LogInformation(
+                "AI model '{Model}' declares a fixed {Declared}x{Declared} input; ignoring the configured " +
+                "InputSize of {Configured}.", LastModelPathUsed, declared, settings.InputSize);
+        }
+
+        return declared;
+    }
+
     /// <summary>Picks the preview or final model per <paramref name="useFinalQualityModel"/>, falling back to
     /// the preview model if the final one isn't present — a missing "nice to have" heavier model
     /// degrades quality, it must never fail the whole capture (spec §46 in spirit).</summary>
@@ -144,9 +203,12 @@ public class AiBackgroundRemovalProvider : IBackgroundRemovalService, IDisposabl
         var finalPath = ResolveModelPath(settings.FinalModelPath);
 
         var wantedPath = useFinalQualityModel && File.Exists(finalPath) ? finalPath : previewPath;
-        if (useFinalQualityModel && wantedPath == previewPath && finalPath != previewPath)
+        LastRenderFellBackToPreviewModel = useFinalQualityModel && wantedPath == previewPath && finalPath != previewPath;
+        if (LastRenderFellBackToPreviewModel)
         {
-            _logger.LogDebug("Final AI model '{FinalPath}' not found; using the preview model instead.", finalPath);
+            _logger.LogWarning(
+                "Final AI model '{FinalPath}' not found — this photo is being keyed with the small preview model, " +
+                "which cuts hands, arms and props much more aggressively. Download it on the Admin screen.", finalPath);
         }
 
         lock (_sessionGate)

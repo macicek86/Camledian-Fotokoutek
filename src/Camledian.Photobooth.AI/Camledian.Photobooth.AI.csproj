@@ -17,4 +17,10 @@
     <ProjectReference Include="..\Camledian.Photobooth.Imaging\Camledian.Photobooth.Imaging.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- AiPreprocessing is an implementation detail of this project, but its mask normalization is
+         pure maths worth testing directly rather than through a 4.5 MB ONNX model. -->
+    <InternalsVisibleTo Include="Camledian.Photobooth.Tests" />
+  </ItemGroup>
+
 </Project>

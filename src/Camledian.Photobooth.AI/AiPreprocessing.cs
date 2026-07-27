@@ -36,9 +36,22 @@ internal static class AiPreprocessing
         return tensor;
     }
 
+    /// <summary>Below this raw min-max spread the model has not actually separated anything from
+    /// anything — a uniformly ~0.5 saliency map on a noisy, badly lit frame. Stretching that to 0-1
+    /// manufactures a confident-looking mask out of sensor noise, which is worse than admitting the
+    /// inference failed, so callers get told instead (see the <c>lowConfidence</c> output).</summary>
+    private const float MinMeaningfulRange = 0.10f;
+
     /// <summary>Reads the last two tensor dimensions as (height, width) and applies rembg-style
     /// min-max contrast normalization so the saliency map spans the full 0-1 range.</summary>
-    public static float[] ExtractAndNormalizeMask(Tensor<float> outputTensor, int width, int height)
+    public static float[] ExtractAndNormalizeMask(Tensor<float> outputTensor, int width, int height) =>
+        ExtractAndNormalizeMask(outputTensor, width, height, out _);
+
+    /// <param name="lowConfidence">True when the raw output had almost no contrast, i.e. the model
+    /// found nothing it could tell apart. The mask is still normalized and returned (it is the best
+    /// guess available), but callers should prefer not to key a photo on it.</param>
+    /// <inheritdoc cref="ExtractAndNormalizeMask(Tensor{float}, int, int)"/>
+    public static float[] ExtractAndNormalizeMask(Tensor<float> outputTensor, int width, int height, out bool lowConfidence)
     {
         var dims = outputTensor.Dimensions;
         var h = dims[^2];
@@ -67,7 +80,10 @@ internal static class AiPreprocessing
             }
         }
 
-        var range = Math.Max(1e-6f, max - min);
+        var rawRange = max - min;
+        lowConfidence = rawRange < MinMeaningfulRange;
+
+        var range = Math.Max(1e-6f, rawRange);
         for (var i = 0; i < raw.Length; i++)
         {
             raw[i] = (raw[i] - min) / range;

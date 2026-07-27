@@ -65,8 +65,14 @@ public partial class MainViewModel
 
         var totalMb = known.Sum(m => m.Descriptor!.ApproximateBytes) / 1_000_000.0;
         var names = string.Join(", ", known.Select(m => m.Descriptor!.FileName));
-        AiModelStatus = $"Chybí: {names} (~{totalMb:0} MB). Bez modelu pro náhled se AI a Hybrid režim " +
-            "přepnou na Green Screen.";
+        // Spelling out what each missing model actually costs: the preview one is a hard blocker, the
+        // final one degrades every photo silently, which is the more insidious of the two.
+        var missingFinal = known.Any(m => m.Descriptor!.FileName == AiModelCatalog.FinalModel.FileName);
+        var consequence = missingFinal
+            ? "Bez finálního modelu se fotky klíčují malým náhledovým modelem — ořezává ruce, paže a rekvizity. " +
+              "Bez modelu pro náhled se AI a Hybrid režim přepnou na Green Screen."
+            : "Bez modelu pro náhled se AI a Hybrid režim přepnou na Green Screen.";
+        AiModelStatus = $"Chybí: {names} (~{totalMb:0} MB). {consequence}";
         CanDownloadAiModels = true;
     }
 

@@ -274,7 +274,8 @@ public partial class MainViewModel : ObservableObject
             cameraSettings.SelectedDeviceId,
             cameraSettings.RequestedWidth,
             cameraSettings.RequestedHeight,
-            cameraSettings.RequestedFps);
+            cameraSettings.RequestedFps,
+            cameraSettings.LockExposureAndWhiteBalance);
 
         try
         {

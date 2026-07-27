@@ -17,4 +17,17 @@ public class BackgroundSubtractionSettings
     public double ThresholdDistance { get; set; } = 40;
 
     public double FeatherPixels { get; set; } = 3.0;
+
+    /// <summary>Rescale the reference photo's brightness/colour to match the current frame before
+    /// comparing them. Without it, a webcam that re-meters the scene when someone steps in front of
+    /// it (auto-exposure, auto white balance) shifts every pixel at once, the reference stops
+    /// matching anywhere, and the whole frame reads as foreground. Costs one extra pass over a
+    /// subsample of the frame. Turn off only to reproduce the old behaviour.</summary>
+    public bool CompensateLightingDrift { get; set; } = true;
+
+    /// <summary>Radius (px) of the morphological closing that fills pinholes punched into the subject
+    /// where their clothing happens to match the background colour behind them. 0 disables it.
+    /// Closing can only add foreground, never remove it, so it cannot eat thin props or fingers —
+    /// but a large radius will bridge genuinely separate gaps (e.g. between an arm and the body).</summary>
+    public double FillHolesPixels { get; set; } = 2.0;
 }

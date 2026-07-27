@@ -1,6 +1,7 @@
 using System.IO;
 using System.Windows.Threading;
 using Camledian.Photobooth.AI;
+using Camledian.Photobooth.Camera.Providers;
 using Camledian.Photobooth.Cloud.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -48,6 +49,18 @@ public partial class MainViewModel
     [ObservableProperty]
     private string? _diagTestMessage;
 
+    /// <summary>Whether exposure/white balance actually got locked. Some drivers accept the request
+    /// and ignore it, and the only symptom is background subtraction quietly getting worse whenever
+    /// the lighting changes — so it is worth being able to read it off the screen at an event.</summary>
+    [ObservableProperty]
+    private string _diagExposureLock = "-";
+
+    /// <summary>Which model the last final render used, and whether it was the small preview model
+    /// standing in for a missing final one — that substitution costs visible quality on hands, arms
+    /// and props, so it should not be something you can only find in the log file.</summary>
+    [ObservableProperty]
+    private string _diagAiModel = "-";
+
     private void StartDiagnosticsTimer()
     {
         _ = RefreshDiagnosticsAsync();
@@ -72,6 +85,20 @@ public partial class MainViewModel
         DiagPrinterStatus = AvailablePrinters.Count > 0
             ? string.Join(", ", AvailablePrinters.Select(p => p.Name))
             : "Žádná tiskárna nenalezena";
+
+        DiagExposureLock = _camera switch
+        {
+            WebcamCameraProvider { LastExposureLockResult: { } result } => result,
+            WebcamCameraProvider => "Nezamčeno (vypnuto v nastavení).",
+            _ => "Neaplikuje se (Mock kamera).",
+        };
+
+        var ai = _backgroundRemovalFactory.AiProvider;
+        DiagAiModel = ai.LastModelPathUsed is not { } modelPath
+            ? "Zatím nepoužit"
+            : Path.GetFileName(modelPath) + (ai.LastRenderFellBackToPreviewModel
+                ? " — POZOR: finální model chybí, fotky se klíčují náhledovým modelem."
+                : string.Empty);
 
         // Spec §46: AI model missing -> warn and keep going on Green Screen instead of failing.
         if (_backgroundRemovalFactory.LastFallbackNotice is { } notice && DiagTestMessage != notice)
