@@ -166,10 +166,11 @@
                     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                         <StackPanel Margin="16" MaxWidth="480" HorizontalAlignment="Left">
                             <Label Content="Režim odstranění pozadí" />
-                            <!-- Enum-typed ItemsSource + SelectedItem, NOT SelectedValuePath="Content":
-                                 string ComboBoxItem contents never compare equal to the enum this is
-                                 bound to, so the box rendered blank and never showed which mode was
-                                 actually active. -->
+                            <!-- Driven off Enum.GetValues rather than a hand-written ComboBoxItem list,
+                                 so a new BackgroundRemovalMode can't be added without showing up here.
+                                 The SelectedValuePath="Content" pattern used elsewhere in this file
+                                 does work — WPF type-converts when matching — it just duplicates the
+                                 enum in XAML where it can silently drift. -->
                             <ComboBox ItemsSource="{Binding BackgroundRemovalModes}"
                                       SelectedItem="{Binding Settings.Ui.BackgroundRemovalMode}" Margin="0,0,0,16" />
                             <Label Content="Model pro náhled (rychlý)" />
