@@ -203,7 +203,14 @@ public partial class MainViewModel : ObservableObject
         _dispatcher = dispatcher;
         _logger = logger;
 
-        _fsm.StateChanged += (_, e) => State = e.To;
+        _fsm.StateChanged += (_, e) =>
+        {
+            State = e.To;
+            // LiveView is the only screen bound to PreviewImage (MainWindow.xaml shows it for
+            // Preview/Countdown/Capturing), so everywhere else the pipeline would be rendering
+            // frames nobody can see.
+            _preview.IsPaused = e.To is not (PhotoboothState.Preview or PhotoboothState.Countdown or PhotoboothState.Capturing);
+        };
 
         // SettingsRepository.LoadAsync builds a brand-new AppSettings (and new section objects)
         // every call, and Settings is just a pass-through to SettingsService.Current — so a reload

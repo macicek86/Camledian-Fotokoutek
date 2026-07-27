@@ -24,10 +24,10 @@ public class BackgroundSubtractionAiHybridProvider(
 
     public string Name => "Background Subtraction + AI";
 
-    public async Task<float[]> ApplyAsync(Image<Rgba32> frame, bool highQuality, CancellationToken cancellationToken = default)
+    public async Task<float[]> ApplyAsync(Image<Rgba32> frame, BackgroundRemovalOptions options, CancellationToken cancellationToken = default)
     {
         using var aiFrame = frame.Clone();
-        var aiMask = await aiProvider.ApplyAsync(aiFrame, highQuality, cancellationToken).ConfigureAwait(false);
+        var aiMask = await aiProvider.ApplyAsync(aiFrame, options, cancellationToken).ConfigureAwait(false);
 
         // Mutates `frame` in place (alpha channel) and hands back its own raw mask — same convention
         // as ChromaKeyProcessor/BackgroundSubtractionProcessor, this is the copy the caller keeps.

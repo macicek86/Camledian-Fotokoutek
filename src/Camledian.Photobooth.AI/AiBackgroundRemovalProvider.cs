@@ -50,27 +50,29 @@ public class AiBackgroundRemovalProvider : IBackgroundRemovalService, IDisposabl
     /// tab to confirm the final render really did use the heavier model, not a silent fallback.</summary>
     public string? LastModelPathUsed { get; private set; }
 
-    public Task<float[]> ApplyAsync(Image<Rgba32> frame, bool highQuality, CancellationToken cancellationToken = default)
+    public Task<float[]> ApplyAsync(Image<Rgba32> frame, BackgroundRemovalOptions options, CancellationToken cancellationToken = default)
     {
         var settings = _getSettings();
         var resolutionChanged = _lastMask is null || _lastMaskWidth != frame.Width || _lastMaskHeight != frame.Height;
         var throttleElapsedMs = (DateTime.UtcNow - _lastInferenceUtc).TotalMilliseconds;
         var minIntervalMs = settings.PreviewInferenceFps > 0 ? 1000.0 / settings.PreviewInferenceFps : 0;
 
-        // Preview can reuse the last known mask between inference runs (spec §24: camera at 30 FPS,
-        // AI at ~10-15 FPS); final capture always runs a fresh, full-resolution pass (spec §25).
-        var mustRunInference = highQuality || resolutionChanged || throttleElapsedMs >= minIntervalMs;
+        // Only the live camera loop may reuse a mask (spec §24: camera at 30 FPS, AI at ~10-15 FPS).
+        // Anything holding a distinct still — the final render, a burst thumbnail — asks for a fresh
+        // one, independently of which model it wants; reusing a mask computed from a *different*
+        // frame is not an optimisation, it is a wrong cutout.
+        var mustRunInference = options.ForceFreshMask || resolutionChanged || throttleElapsedMs >= minIntervalMs;
 
         float[] mask;
         if (mustRunInference)
         {
             var sw = Stopwatch.StartNew();
-            mask = RunInference(frame, settings, highQuality);
+            mask = RunInference(frame, settings, options.UseFinalQualityModel);
             sw.Stop();
             LastInferenceMs = sw.Elapsed.TotalMilliseconds;
             _logger.LogDebug(
                 "AI inference ({Quality}) took {Ms:0.0} ms for a {W}x{H} frame using '{Model}'.",
-                highQuality ? "final" : "preview", LastInferenceMs, frame.Width, frame.Height, LastModelPathUsed);
+                options.UseFinalQualityModel ? "final" : "preview", LastInferenceMs, frame.Width, frame.Height, LastModelPathUsed);
 
             _lastMask = mask;
             _lastMaskWidth = frame.Width;
@@ -86,9 +88,9 @@ public class AiBackgroundRemovalProvider : IBackgroundRemovalService, IDisposabl
         return Task.FromResult(mask);
     }
 
-    private float[] RunInference(Image<Rgba32> frame, AiSettings settings, bool highQuality)
+    private float[] RunInference(Image<Rgba32> frame, AiSettings settings, bool useFinalQualityModel)
     {
-        var session = GetOrCreateSession(settings, highQuality);
+        var session = GetOrCreateSession(settings, useFinalQualityModel);
         var inputSize = settings.InputSize;
 
         using var resized = frame.Clone(ctx => ctx.Resize(inputSize, inputSize));
@@ -105,7 +107,7 @@ public class AiBackgroundRemovalProvider : IBackgroundRemovalService, IDisposabl
 
         var upscaled = AiPreprocessing.ResizeMask(rawMask, inputSize, inputSize, frame.Width, frame.Height);
 
-        var featherRadius = highQuality ? settings.FeatherPixels : settings.FeatherPixels / 2.0;
+        var featherRadius = useFinalQualityModel ? settings.FeatherPixels : settings.FeatherPixels / 2.0;
         BoxBlur.Apply(upscaled, frame.Width, frame.Height, featherRadius);
         return upscaled;
     }
@@ -133,16 +135,16 @@ public class AiBackgroundRemovalProvider : IBackgroundRemovalService, IDisposabl
         });
     }
 
-    /// <summary>Picks the preview or final model per <paramref name="highQuality"/>, falling back to
+    /// <summary>Picks the preview or final model per <paramref name="useFinalQualityModel"/>, falling back to
     /// the preview model if the final one isn't present — a missing "nice to have" heavier model
     /// degrades quality, it must never fail the whole capture (spec §46 in spirit).</summary>
-    private InferenceSession GetOrCreateSession(AiSettings settings, bool highQuality)
+    private InferenceSession GetOrCreateSession(AiSettings settings, bool useFinalQualityModel)
     {
         var previewPath = ResolveModelPath(settings.PreviewModelPath);
         var finalPath = ResolveModelPath(settings.FinalModelPath);
 
-        var wantedPath = highQuality && File.Exists(finalPath) ? finalPath : previewPath;
-        if (highQuality && wantedPath == previewPath && finalPath != previewPath)
+        var wantedPath = useFinalQualityModel && File.Exists(finalPath) ? finalPath : previewPath;
+        if (useFinalQualityModel && wantedPath == previewPath && finalPath != previewPath)
         {
             _logger.LogDebug("Final AI model '{FinalPath}' not found; using the preview model instead.", finalPath);
         }

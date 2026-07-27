@@ -21,7 +21,9 @@ public class BackgroundSubtractionRemovalService(Func<BackgroundSubtractionSetti
     public bool HasReferenceImage(BackgroundSubtractionSettings settings) =>
         !string.IsNullOrWhiteSpace(settings.ReferenceImagePath) && File.Exists(ResolvePath(settings.ReferenceImagePath));
 
-    public Task<float[]> ApplyAsync(Image<Rgba32> frame, bool highQuality, CancellationToken cancellationToken = default)
+    /// <remarks>Ignores <paramref name="options"/>: the mask is recomputed against the reference
+    /// photo every call, so there is no cached mask to bypass and no heavier model to pick.</remarks>
+    public Task<float[]> ApplyAsync(Image<Rgba32> frame, BackgroundRemovalOptions options, CancellationToken cancellationToken = default)
     {
         var mask = TryComputeMask(frame)
             ?? throw new InvalidOperationException("No background-subtraction reference photo captured yet.");

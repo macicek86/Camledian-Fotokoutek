@@ -27,7 +27,11 @@ public static class AiBenchmarkRunner
         {
             using var frame = CreateSyntheticFrame(width, height, i);
             var sw = Stopwatch.StartNew();
-            await provider.ApplyAsync(frame, highQuality: false, cancellationToken).ConfigureAwait(false);
+            // ForceFreshMask (via StillPreview) matters here: with the plain live-preview options
+            // these same-resolution frames land inside the AI throttle window, so every iteration
+            // after the first would time a cached-mask reuse instead of an actual inference and the
+            // reported min/avg would be far too optimistic.
+            await provider.ApplyAsync(frame, BackgroundRemovalOptions.StillPreview, cancellationToken).ConfigureAwait(false);
             sw.Stop();
             timings.Add(sw.Elapsed.TotalMilliseconds);
         }

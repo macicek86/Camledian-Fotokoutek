@@ -27,9 +27,9 @@ public class HybridBackgroundRemovalProvider(
 
     public string Name => "Hybrid (Green Screen + AI)";
 
-    public async Task<float[]> ApplyAsync(Image<Rgba32> frame, bool highQuality, CancellationToken cancellationToken = default)
+    public async Task<float[]> ApplyAsync(Image<Rgba32> frame, BackgroundRemovalOptions options, CancellationToken cancellationToken = default)
     {
-        var comparison = await ComputeMasksAsync(frame, highQuality, cancellationToken).ConfigureAwait(false);
+        var comparison = await ComputeMasksAsync(frame, options, cancellationToken).ConfigureAwait(false);
 
         frame.ProcessPixelRows(accessor =>
         {
@@ -50,10 +50,10 @@ public class HybridBackgroundRemovalProvider(
 
     /// <summary>Exposes the individual chroma/AI masks alongside the combined result, for the admin
     /// "compare masks" diagnostic (spec §26: "Přidej testovací možnost srovnání masek").</summary>
-    public async Task<MaskComparison> ComputeMasksAsync(Image<Rgba32> frame, bool highQuality, CancellationToken cancellationToken = default)
+    public async Task<MaskComparison> ComputeMasksAsync(Image<Rgba32> frame, BackgroundRemovalOptions options, CancellationToken cancellationToken = default)
     {
         using var aiFrame = frame.Clone();
-        var aiMask = await aiProvider.ApplyAsync(aiFrame, highQuality, cancellationToken).ConfigureAwait(false);
+        var aiMask = await aiProvider.ApplyAsync(aiFrame, options, cancellationToken).ConfigureAwait(false);
 
         // ChromaKeyProcessor mutates `frame` in place (alpha + green-spill despill on RGB) and hands
         // back its own raw mask — this is the copy of the frame the caller actually keeps.

@@ -85,7 +85,7 @@ public class PhotoCaptureService(
 
         var backgroundRemoval = backgroundRemovalFactory.Resolve();
         logger.LogInformation("Processing photo {PhotoId} with {Provider} at final quality.", photoId, backgroundRemoval.Name);
-        await backgroundRemoval.ApplyAsync(still.Image, highQuality: true, cancellationToken).ConfigureAwait(false);
+        await backgroundRemoval.ApplyAsync(still.Image, BackgroundRemovalOptions.FinalRender, cancellationToken).ConfigureAwait(false);
 
         using var finalImage = compositionService.ComposeFinal(background, still.Image, overlay, template);
 

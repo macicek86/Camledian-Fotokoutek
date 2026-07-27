@@ -13,7 +13,7 @@ public interface IBackgroundRemovalService
 {
     string Name { get; }
 
-    /// <param name="highQuality">False for the fast live/AI preview path, true for the one-shot
-    /// final render after capture (spec §12: ComposePreview is fast, ComposeFinal is not).</param>
-    Task<float[]> ApplyAsync(Image<Rgba32> frame, bool highQuality, CancellationToken cancellationToken = default);
+    /// <param name="options">What this pass is for — see <see cref="BackgroundRemovalOptions"/>'s
+    /// named presets rather than constructing one inline.</param>
+    Task<float[]> ApplyAsync(Image<Rgba32> frame, BackgroundRemovalOptions options, CancellationToken cancellationToken = default);
 }

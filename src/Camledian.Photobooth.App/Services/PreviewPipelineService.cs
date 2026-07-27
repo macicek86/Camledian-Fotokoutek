@@ -47,6 +47,19 @@ public sealed class PreviewPipelineService(
     /// case where a prerequisite was missing and a *substitute* technique was used.</summary>
     public string? EmptyMaskNotice { get; private set; }
 
+    /// <summary>
+    /// Skips the whole keying+composition pass while no screen is showing the live preview. It runs
+    /// for most of an event otherwise — the kiosk sits on Idle between guests — burning a full AI
+    /// inference several times a second on frames that are never displayed, and competing for CPU
+    /// with the burst thumbnails and the final render, which is exactly the work a guest is waiting
+    /// on. Paused by default because the kiosk starts on Idle.
+    ///
+    /// Deliberately does not touch the camera: it stays running so the preview resumes instantly,
+    /// and a paused loop stops draining <see cref="ICameraProvider.PreviewFrames"/>, which is a
+    /// single-slot mailbox that <c>CaptureStillAsync</c> draws from too.
+    /// </summary>
+    public bool IsPaused { get; set; } = true;
+
     public async Task StartAsync(CameraStartOptions options, CancellationToken cancellationToken = default)
     {
         await camera.StartAsync(options, cancellationToken).ConfigureAwait(false);
@@ -75,6 +88,20 @@ public sealed class PreviewPipelineService(
     {
         while (!token.IsCancellationRequested)
         {
+            if (IsPaused)
+            {
+                try
+                {
+                    await Task.Delay(50, token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
+
+                continue;
+            }
+
             CameraFrame? cameraFrame;
             try
             {
@@ -96,7 +123,7 @@ public sealed class PreviewPipelineService(
                 {
                     var sw = System.Diagnostics.Stopwatch.StartNew();
                     var backgroundRemoval = backgroundRemovalFactory.Resolve();
-                    var mask = await backgroundRemoval.ApplyAsync(cameraFrame.Image, highQuality: false, token).ConfigureAwait(false);
+                    var mask = await backgroundRemoval.ApplyAsync(cameraFrame.Image, BackgroundRemovalOptions.LivePreview, token).ConfigureAwait(false);
                     LastChromaKeyOrAiMs = sw.Elapsed.TotalMilliseconds;
                     UpdateEmptyMaskNotice(mask, backgroundRemoval.Name);
 
@@ -181,11 +208,11 @@ public sealed class PreviewPipelineService(
         using var working = frame.Clone();
         var backgroundRemoval = backgroundRemovalFactory.Resolve();
 
-        // highQuality deliberately: it is the only path that bypasses the AI provider's preview
-        // throttle, so every burst shot gets a mask computed from *that* shot. At preview quality
-        // these back-to-back calls would land inside the throttle window and silently reuse whichever
-        // mask the live loop last produced — for a different frame entirely.
-        await backgroundRemoval.ApplyAsync(working, highQuality: true, token).ConfigureAwait(false);
+        // StillPreview, not FinalRender: every burst shot needs a mask computed from *that* shot
+        // (otherwise back-to-back calls land inside the AI throttle window and reuse whichever mask
+        // the live loop last produced, for a different frame entirely) — but at a few hundred pixels
+        // wide there is nothing to gain from the heavy final model.
+        await backgroundRemoval.ApplyAsync(working, BackgroundRemovalOptions.StillPreview, token).ConfigureAwait(false);
 
         using var background = SelectedBackground?.Clone() ?? CreateBlankCanvas(thumbnailTemplate);
         return compositionService.ComposePreview(background, working, SelectedOverlay, thumbnailTemplate);
