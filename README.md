@@ -18,7 +18,7 @@ src/
   Camledian.Photobooth.Printing   Print interfaces + ESC/POS receipt payload builder (net10.0, cross-platform)
   Camledian.Photobooth.Printing.Windows  Windows printing (System.Drawing.Printing) + serial (COM/Bluetooth) receipt printer transport
   Camledian.Photobooth.Cloud      Cloudflare API client, device pairing, sync queue worker, QR generation
-  Camledian.Photobooth.App        WPF app (net10.0-windows) — the actual kiosk UI
+  Camledian.Photobooth.App        WPF app (net10.0-windows) — the actual kiosk UI, Fluent chrome via WPF UI
 tests/
   Camledian.Photobooth.Tests      xunit tests for Core/Imaging/Camera/Storage
 cloud/                            Cloudflare Worker backend (TypeScript, D1, R2)

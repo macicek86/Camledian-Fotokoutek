@@ -27,7 +27,7 @@
                     <DataTemplate>
                         <Button Command="{Binding DataContext.SelectBurstShotCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                 CommandParameter="{Binding}"
-                                Margin="16" Padding="0" BorderThickness="0" Background="Transparent" Cursor="Hand">
+                                Style="{StaticResource PhotoTileButton}" Margin="16">
                             <StackPanel>
                                 <Border CornerRadius="12" ClipToBounds="True" BorderThickness="4" BorderBrush="{StaticResource SurfaceBrush}">
                                     <Image Source="{Binding Thumbnail}" Width="360" Stretch="Uniform" />

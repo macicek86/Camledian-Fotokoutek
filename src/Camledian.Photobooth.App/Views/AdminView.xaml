@@ -5,9 +5,9 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d" d:DesignWidth="1280" d:DesignHeight="720">
     <UserControl.Resources>
-        <!-- TextBox/CheckBox/Slider/ComboBox/TabControl are styled globally in App.xaml so the
-             dark ControlTemplate applies everywhere in Admin; only Label/SectionTitle are local. -->
-        <Style TargetType="Label">
+        <!-- TextBox/CheckBox/Slider/ComboBox/TabControl get their Fluent template from WPF UI plus the
+             admin spacing overrides in App.xaml; only Label/SectionTitle are local. -->
+        <Style TargetType="Label" BasedOn="{StaticResource {x:Type Label}}">
             <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
             <Setter Property="FontSize" Value="16" />
         </Style>

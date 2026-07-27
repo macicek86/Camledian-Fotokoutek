@@ -30,7 +30,7 @@
                     <DataTemplate>
                         <Button Command="{Binding DataContext.SelectBackgroundCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                 CommandParameter="{Binding}"
-                                Margin="12" Padding="0" BorderThickness="0" Background="Transparent" Cursor="Hand">
+                                Style="{StaticResource PhotoTileButton}" Margin="12">
                             <StackPanel Width="280">
                                 <Border CornerRadius="12" ClipToBounds="True" BorderThickness="3" BorderBrush="{StaticResource SurfaceBrush}">
                                     <Image Source="{Binding LocalPath, Converter={StaticResource FilePathToImageConverter}}"

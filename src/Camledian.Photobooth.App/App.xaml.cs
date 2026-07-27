@@ -1,9 +1,11 @@
 using System.IO;
 using System.Net.Http;
 using System.Windows;
+using System.Windows.Media;
 using System.Windows.Threading;
 using Camledian.Photobooth.AI;
 using Camledian.Photobooth.App.Bootstrap;
+using Camledian.Photobooth.App.Diagnostics;
 using Camledian.Photobooth.App.Services;
 using Camledian.Photobooth.App.ViewModels;
 using Camledian.Photobooth.Camera;
@@ -20,6 +22,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Serilog;
+using Wpf.Ui.Appearance;
 
 namespace Camledian.Photobooth.App;
 
@@ -33,6 +36,8 @@ public partial class App : Application
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        ApplyBrandAccent();
 
         var builder = Host.CreateApplicationBuilder();
         builder.Configuration
@@ -63,7 +68,49 @@ public partial class App : Application
         MainWindow = mainWindow;
         mainWindow.Show();
 
-        await ((MainViewModel)mainWindow.DataContext!).InitializeAsync().ConfigureAwait(true);
+        var viewModel = (MainViewModel)mainWindow.DataContext!;
+        await viewModel.InitializeAsync().ConfigureAwait(true);
+
+        // CI-only screenshot pass (see UiCaptureRunner). Deliberately after InitializeAsync so the
+        // captures show real loaded settings and the real background catalogue, not empty defaults.
+        if (TryGetCaptureDirectory(e.Args, out var captureDirectory))
+        {
+            await UiCaptureRunner.RunAsync(mainWindow, viewModel, captureDirectory).ConfigureAwait(true);
+            Shutdown();
+        }
+    }
+
+    /// <summary>
+    /// Reads <c>--ui-capture &lt;dir&gt;</c> off the command line. The kiosk is launched with no
+    /// arguments, so this stays dormant in normal operation.
+    /// </summary>
+    private static bool TryGetCaptureDirectory(string[] args, out string directory)
+    {
+        var index = Array.IndexOf(args, UiCaptureRunner.Flag);
+        if (index >= 0 && index + 1 < args.Length)
+        {
+            directory = args[index + 1];
+            return true;
+        }
+
+        directory = string.Empty;
+        return false;
+    }
+
+    /// <summary>
+    /// Repoints WPF UI's accent resources at the brand colour. The theme itself is declared in App.xaml
+    /// (<c>ui:ThemesDictionary Theme="Dark"</c>); only the accent needs code, because WPF UI ships a
+    /// Windows-blue default and derives the lighter/darker shades used by focus rings, slider tracks and
+    /// selected list items from it. Deliberately not routed through
+    /// <c>ApplicationThemeManager.Apply</c>, whose <c>updateAccent</c> would overwrite this with the
+    /// machine's Windows accent colour — a kiosk must look the same on every machine it is deployed to.
+    /// </summary>
+    private static void ApplyBrandAccent()
+    {
+        if (Current.TryFindResource("BrandAccentColor") is Color brandAccent)
+        {
+            ApplicationAccentColorManager.Apply(brandAccent, ApplicationTheme.Dark);
+        }
     }
 
     private static void ConfigureLogging(HostApplicationBuilder builder, AppEnvironment environment)
