@@ -414,15 +414,48 @@ public partial class MainViewModel : ObservableObject
             return;
         }
 
+        var thumbnails = await RenderBurstThumbnailsAsync(_burstFrames).ConfigureAwait(true);
         BurstShots.Clear();
-        for (var i = 0; i < _burstFrames.Count; i++)
+        for (var i = 0; i < thumbnails.Count; i++)
         {
-            using var thumbnail = _burstFrames[i].Image.Clone(ctx => ctx.Resize(480, 0));
-            BurstShots.Add(new BurstShotItem(i, ImageSharpWpfInterop.ToBitmapSource(thumbnail)));
+            BurstShots.Add(new BurstShotItem(i, thumbnails[i]));
         }
 
         _fsm.TryFire(PhotoboothState.SelectingPhoto);
         StartSelectPhotoTimeout();
+    }
+
+    /// <summary>Composites every burst shot the way the live preview does, so the picker shows the
+    /// photos the guest will actually get rather than raw unkeyed camera stills. Runs off the UI
+    /// thread — keying several full-resolution frames would otherwise freeze the kiosk mid-flow —
+    /// and only the frozen BitmapSources come back.</summary>
+    private async Task<IReadOnlyList<BitmapSource>> RenderBurstThumbnailsAsync(IReadOnlyList<CameraFrame> frames)
+    {
+        const int thumbnailWidth = 720; // the picker tiles render at 360 DIP; 2x keeps them crisp
+
+        return await Task.Run(async () =>
+        {
+            var rendered = new List<BitmapSource>(frames.Count);
+            foreach (var frame in frames)
+            {
+                try
+                {
+                    using var composite = await _preview.RenderStillCompositeAsync(frame.Image, thumbnailWidth)
+                        .ConfigureAwait(false);
+                    rendered.Add(ImageSharpWpfInterop.ToBitmapSource(composite));
+                }
+                catch (Exception ex)
+                {
+                    // A thumbnail is not worth losing the burst over: fall back to the raw frame so
+                    // the guest can still pick, and the chosen shot is keyed properly either way.
+                    _logger.LogWarning(ex, "Could not composite a burst thumbnail; showing the raw frame instead.");
+                    using var raw = frame.Image.Clone(ctx => ctx.Resize(thumbnailWidth, 0));
+                    rendered.Add(ImageSharpWpfInterop.ToBitmapSource(raw));
+                }
+            }
+
+            return rendered;
+        }).ConfigureAwait(true);
     }
 
     /// <summary>The guest tapped one of the burst shots — process just that one; the rest of the

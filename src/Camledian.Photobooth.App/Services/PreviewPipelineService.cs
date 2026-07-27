@@ -151,9 +151,51 @@ public sealed class PreviewPipelineService(
         }
     }
 
-    private Image<Rgba32> CreateBlankCanvas()
+    /// <summary>
+    /// Renders one already-captured frame the same way the live loop renders camera frames — keyed,
+    /// then composited onto the selected background — scaled down for a thumbnail. The burst picker
+    /// needs this: it used to show the raw camera stills, so the guest chose between pictures that
+    /// looked nothing like the photo they would actually get.
+    ///
+    /// <paramref name="frame"/> is never mutated. The chosen shot is re-keyed from the untouched
+    /// original at full quality by <see cref="PhotoCaptureService.ProcessCapturedAsync"/>.
+    /// </summary>
+    public async Task<Image<Rgba32>> RenderStillCompositeAsync(
+        Image<Rgba32> frame,
+        int width,
+        CancellationToken token = default)
     {
-        var image = new Image<Rgba32>(Template.WidthPx, Template.HeightPx);
+        var template = Template;
+        var height = Math.Max(1, (int)Math.Round(width * (double)template.HeightPx / template.WidthPx));
+        var thumbnailTemplate = new OutputTemplate
+        {
+            Id = template.Id,
+            Name = template.Name,
+            WidthPx = width,
+            HeightPx = height,
+            BackgroundPlacement = template.BackgroundPlacement,
+            ForegroundPlacement = template.ForegroundPlacement,
+            OverlayPlacement = template.OverlayPlacement,
+        };
+
+        using var working = frame.Clone();
+        var backgroundRemoval = backgroundRemovalFactory.Resolve();
+
+        // highQuality deliberately: it is the only path that bypasses the AI provider's preview
+        // throttle, so every burst shot gets a mask computed from *that* shot. At preview quality
+        // these back-to-back calls would land inside the throttle window and silently reuse whichever
+        // mask the live loop last produced — for a different frame entirely.
+        await backgroundRemoval.ApplyAsync(working, highQuality: true, token).ConfigureAwait(false);
+
+        using var background = SelectedBackground?.Clone() ?? CreateBlankCanvas(thumbnailTemplate);
+        return compositionService.ComposePreview(background, working, SelectedOverlay, thumbnailTemplate);
+    }
+
+    private Image<Rgba32> CreateBlankCanvas() => CreateBlankCanvas(Template);
+
+    private static Image<Rgba32> CreateBlankCanvas(OutputTemplate template)
+    {
+        var image = new Image<Rgba32>(template.WidthPx, template.HeightPx);
         image.Mutate(ctx => ctx.Fill(SixLabors.ImageSharp.Color.FromRgb(30, 30, 34)));
         return image;
     }
